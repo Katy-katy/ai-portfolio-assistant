@@ -1,0 +1,9 @@
+Kate is a Senior AI Applied Engineer with 9+ years of experience building production AI systems, including LLM-powered applications, conversational AI platforms, retrieval systems, and AI agents. She has worked on projects at LinkedIn and SLAC National Accelerator Laboratory, with experience in natural language processing, machine learning, prompt engineering, vector search, and large-scale AI infrastructure.
+
+Kate is a Senior Applied AI Engineer with 9+ years of experience building production AI systems, including LLM-powered applications, conversational AI platforms, retrieval systems, and AI agents. She has worked on projects at LinkedIn and SLAC National Accelerator Laboratory, with experience in natural language processing, machine learning, prompt engineering, vector search, and large-scale AI infrastructure.
+
+Kate has a strong background in Python and cloud-based AI services, and has experience with a wide range of AI technologies, including OpenAI APIs, Azure Cognitive Services, and various ML frameworks. She is passionate about building production-ready AI systems that solve real-world problems and improve user experiences.
+
+Kate has a proven track record of successfully delivering AI projects from ideation through deployment, including leading large-scale enterprise initiatives, mentoring other engineers, and improving AI systems through data-driven analysis and iterative enhancements.
+
+Kate is a US Citizen with experience in both startup and large enterprise environments, and is comfortable working in fast-paced, dynamic settings. She is a strong collaborator and team player, with a track record of working effectively with cross-functional teams to deliver high-quality AI solutions.

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kate's AI Portfolio Assistant</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Marked for Markdown Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="profile-summary">
+                    <div class="profile-avatar">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h2>Kate Tcareva</h2>
+                        <p>Senior Applied AI Engineer</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="new-chat-btn" id="new-chat-btn">
+                <i class="fa-solid fa-plus"></i> New Conversation
+            </button>
+            
+            <div class="sessions-list-container">
+                <h3>Recent Conversations</h3>
+                <ul class="sessions-list" id="sessions-list">
+                    <!-- Session items will be dynamically injected here -->
+                </ul>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="theme-toggle" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Dark Mode</span>
+                </div>
+                <div class="contact-links">
+                    <a href="https://linkedin.com/in/kate-tcareva/" target="_blank" title="LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
+                    <a href="mailto:ek.tcareva@gmail.com" title="Email"><i class="fa-solid fa-envelope"></i></a>
+                    <a href="tel:6504501573" title="Phone"><i class="fa-solid fa-phone"></i></a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <div class="chat-header-info">
+                    <h1>AI Portfolio Assistant</h1>
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Local Prototype (ADK 2.0)</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="clear-session-btn" title="Clear Current Conversation">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Message Window -->
+            <section class="messages-container" id="messages-container">
+                <!-- Welcome / Starter Prompt Panel -->
+                <div class="welcome-panel" id="welcome-panel">
+                    <div class="welcome-icon">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <h2>Welcome to Kate's Portfolio Assistant!</h2>
+                    <p>Ask me anything about Kate's professional career, job skills, experience at LinkedIn or SLAC, education, and specific AI/NLP projects.</p>
+                    
+                    <div class="suggested-questions">
+                        <h3>Suggested Questions</h3>
+                        <div class="suggestions-grid">
+                            <div class="suggestion-card" data-prompt="What projects did Kate work on at LinkedIn?">
+                                <i class="fa-solid fa-diagram-project"></i>
+                                <span>LinkedIn Projects</span>
+                                <p>"What projects did Kate work on at LinkedIn?"</p>
+                            </div>
+                            <div class="suggestion-card" data-prompt="Tell me about her experience with RAG and LLM agents.">
+                                <i class="fa-solid fa-brain"></i>
+                                <span>RAG & LLM Agents</span>
+                                <p>"Tell me about her experience with RAG and LLM agents."</p>
+                            </div>
+                            <div class="suggestion-card" data-prompt="What are Kate's core technical skills and programming languages?">
+                                <i class="fa-solid fa-code"></i>
+                                <span>Technical Skills</span>
+                                <p>"What are Kate's core technical skills?"</p>
+                            </div>
+                            <div class="suggestion-card" data-prompt="Can you summarize her education and certifications?">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                <span>Education</span>
+                                <p>"Summarize her education and certifications."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Messages will be injected here -->
+            </section>
+
+            <!-- Input Area -->
+            <footer class="input-container">
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="message-input" placeholder="Ask a question about Kate's experience..." autocomplete="off" required>
+                    <button type="submit" class="send-btn" id="send-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Main JS Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
