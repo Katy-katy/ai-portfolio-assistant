@@ -162,10 +162,8 @@ async function startNewConversation() {
 }
 
 // Select and load conversation history
-function selectSession(sessionId) {
+async function selectSession(sessionId) {
     currentSessionId = sessionId;
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
     
     // Update active highlight
     document.querySelectorAll(".session-item").forEach(item => {
@@ -178,35 +176,51 @@ function selectSession(sessionId) {
     const bubbleRows = messagesContainer.querySelectorAll(".message-row, .tool-badge");
     bubbleRows.forEach(row => row.remove());
     
-    // Render event logs
-    if (session.events && session.events.length > 0) {
-        session.events.forEach(event => {
-            const role = event.content?.role || (event.author === "user" ? "user" : "model");
-            
-            // Check for tool calls
-            if (event.content && event.content.parts) {
-                event.content.parts.forEach(part => {
-                    if (part.functionCall) {
-                        renderToolCallBadge(part.functionCall.name, part.functionCall.args);
-                    }
-                });
-            }
-            
-            // Render text messages
-            let textContent = "";
-            if (event.content && event.content.parts) {
-                textContent = event.content.parts
-                    .filter(p => p.text)
-                    .map(p => p.text)
-                    .join("");
-            } else if (event.output && typeof event.output === "string") {
-                textContent = event.output;
-            }
-            
-            if (textContent.trim()) {
-                appendMessageBubble(textContent, role === "user" ? "user" : "agent");
-            }
-        });
+    // Show typing loader while loading history
+    const loadingIndicator = appendTypingIndicator();
+    scrollToBottom();
+    
+    try {
+        const response = await fetch(`${API_BASE}/apps/${APP_NAME}/users/${USER_ID}/sessions/${sessionId}`);
+        if (!response.ok) throw new Error("Failed to load session details");
+        
+        const fullSession = await response.json();
+        loadingIndicator.remove();
+        
+        // Render event logs
+        if (fullSession.events && fullSession.events.length > 0) {
+            fullSession.events.forEach(event => {
+                const role = event.content?.role || (event.author === "user" ? "user" : "model");
+                
+                // Check for tool calls
+                if (event.content && event.content.parts) {
+                    event.content.parts.forEach(part => {
+                        if (part.functionCall) {
+                            renderToolCallBadge(part.functionCall.name, part.functionCall.args);
+                        }
+                    });
+                }
+                
+                // Render text messages
+                let textContent = "";
+                if (event.content && event.content.parts) {
+                    textContent = event.content.parts
+                        .filter(p => p.text)
+                        .map(p => p.text)
+                        .join("");
+                } else if (event.output && typeof event.output === "string") {
+                    textContent = event.output;
+                }
+                
+                if (textContent.trim()) {
+                    appendMessageBubble(textContent, role === "user" ? "user" : "agent");
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Error loading session:", err);
+        loadingIndicator.remove();
+        appendMessageBubble("Could not load conversation history.", "agent");
     }
     
     scrollToBottom();
