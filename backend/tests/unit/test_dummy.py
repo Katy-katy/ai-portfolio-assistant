@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-You can add your unit tests here.
+Smoke tests for the portfolio assistant backend.
 This is where you test your business logic, including agent functionality,
 data processing, and other core components of your application.
 """
+from fastapi.testclient import TestClient
+
+from app.fast_api_app import app
 
 
-def test_dummy() -> None:
-    """Placeholder - replace with real tests."""
-    assert 1 == 1
+client = TestClient(app)
+
+
+def test_health_endpoint() -> None:
+    """Test that the health check endpoint returns a 200 status."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("status") == "ok"

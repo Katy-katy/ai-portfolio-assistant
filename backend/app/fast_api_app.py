@@ -66,6 +66,16 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     return {"status": "success"}
 
 
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    """Health check endpoint for readiness probes.
+
+    Returns:
+        Status and timestamp indicating the service is healthy.
+    """
+    return {"status": "ok", "service": "portfolio_assistant"}
+
+
 # Main execution
 if __name__ == "__main__":
     import uvicorn
