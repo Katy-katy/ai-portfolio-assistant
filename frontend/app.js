@@ -196,7 +196,8 @@ async function selectSession(sessionId) {
                 if (event.content && event.content.parts) {
                     event.content.parts.forEach(part => {
                         if (part.functionCall) {
-                            renderToolCallBadge(part.functionCall.name, part.functionCall.args);
+                            const agentName = event.author && event.author !== "user" ? event.author : null;
+                            renderToolCallBadge(part.functionCall.name, part.functionCall.args, agentName);
                         }
                     });
                 }
@@ -299,6 +300,22 @@ async function handleSendMessage(messageText) {
         }
         
         const result = await response.json();
+
+        // Show which agent invoked which tool(s)
+        if (Array.isArray(result.agent_runs)) {
+            result.agent_runs.forEach(run => {
+                if (!run || !run.tools_called || !run.agent_name) return;
+
+                const tools = String(run.tools_called)
+                    .split(",")
+                    .map(t => t.trim())
+                    .filter(Boolean);
+
+                tools.forEach(toolName => {
+                    renderToolCallBadge(toolName, {}, run.agent_name);
+                });
+            });
+        }
         
         // 5. Handle response from multi-agent orchestration
         if (result.status === "success" && result.answer) {
@@ -344,7 +361,7 @@ function appendMessageBubble(text, sender) {
 }
 
 // Append tool execution badge
-function renderToolCallBadge(toolName, args) {
+function renderToolCallBadge(toolName, args, agentName = null) {
     const badge = document.createElement("div");
     badge.className = "tool-badge";
     
@@ -355,7 +372,8 @@ function renderToolCallBadge(toolName, args) {
             .join(", ");
     }
     
-    badge.innerHTML = `<i class="fa-solid fa-gears"></i> Running tool: <code>${toolName}(${argsStr})</code>`;
+    const byAgent = agentName ? ` by <code>${agentName}</code>` : "";
+    badge.innerHTML = `<i class="fa-solid fa-gears"></i> Running tool: <code>${toolName}(${argsStr})</code>${byAgent}`;
     messagesContainer.appendChild(badge);
     return badge;
 }
@@ -373,10 +391,10 @@ function appendTypingIndicator() {
     indicator.innerHTML = `
         <span class="typing-dot"></span>
         <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
     `;
     
     bubble.appendChild(indicator);
+
     row.appendChild(bubble);
     messagesContainer.appendChild(row);
     return row;

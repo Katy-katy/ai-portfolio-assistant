@@ -24,9 +24,14 @@ Manages the workflow:
 
 import json
 import logging
+import re
+import uuid
 from datetime import datetime
 from typing import Any
 
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
 from sqlalchemy.orm import Session
 
 from .multi_agent import (
@@ -38,6 +43,7 @@ from .multi_agent import (
     answer_agent,
 )
 from .database import AgentRun, Question
+from .tools import is_question_on_topic
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +59,7 @@ class MultiAgentOrchestrator:
         """
         self.db = db
         self.agent_runs: list[dict] = []
+        self._adk_session_service = InMemorySessionService()
 
     def validate_question(self, question: str) -> bool:
         """Validate if question is on-topic.
@@ -63,14 +70,28 @@ class MultiAgentOrchestrator:
         Returns:
             True if on-topic, False otherwise
         """
+        # Fast local guardrail: clearly profile-related questions should pass
+        # even if the validation model is overly strict on wording.
+        if self._is_clearly_on_topic(question):
+            self._log_agent_run(
+                agent_name="validation_agent",
+                start_time=datetime.utcnow(),
+                end_time=datetime.utcnow(),
+                status="success",
+                output="ON_TOPIC (local heuristic)",
+            )
+            return True
+
         start_time = datetime.utcnow()
         try:
             # Run validation agent
-            response = validation_agent.run(question)
+            response_text, tools_called = self._run_agent_text(
+                agent=validation_agent,
+                prompt=question,
+                runner_prefix="validation",
+            )
             end_time = datetime.utcnow()
 
-            # Extract response text
-            response_text = self._extract_text(response)
             is_valid = "ON_TOPIC" in response_text.upper()
 
             # Log agent run
@@ -80,20 +101,58 @@ class MultiAgentOrchestrator:
                 end_time=end_time,
                 status="success",
                 output=response_text,
+                tools_called=",".join(tools_called) if tools_called else None,
             )
 
             return is_valid
         except Exception as e:
             logger.error(f"Validation agent failed: {str(e)}")
             end_time = datetime.utcnow()
+            # If the model call fails, fallback to keyword matcher rather than
+            # rejecting the question outright.
+            fallback_valid = is_question_on_topic(question)
             self._log_agent_run(
                 agent_name="validation_agent",
                 start_time=start_time,
                 end_time=end_time,
-                status="error",
-                output=str(e),
+                status="success" if fallback_valid else "error",
+                output=(
+                    f"ON_TOPIC (fallback keyword matcher) after error: {str(e)}"
+                    if fallback_valid
+                    else str(e)
+                ),
             )
-            return False
+            return fallback_valid
+
+    def _is_clearly_on_topic(self, question: str) -> bool:
+        """Return True for clear profile-related questions.
+
+        This reduces false negatives from the validation agent while keeping
+        off-topic filtering strict for generic queries.
+        """
+        text = question.lower()
+
+        # Mention of Kate/her profile context.
+        has_profile_subject = bool(
+            re.search(r"\b(kate|ekaterina|tcareva|her|she)\b", text)
+        )
+
+        # Professional/portfolio intent.
+        has_professional_intent = bool(
+            re.search(
+                r"\b(experience|skills?|projects?|career|resume|cv|background|"
+                r"education|certifications?|publications?|accomplishments?|"
+                r"achievements?)\b",
+                text,
+            )
+        )
+
+        # Explicit domain phrases that are frequently asked.
+        has_technical_focus = bool(
+            re.search(r"\b(ai|ml|machine learning|llm|nlp|agent|python|fastapi)\b", text)
+        )
+
+        return has_profile_subject and (has_professional_intent or has_technical_focus)
 
     def route_question(self, question: str) -> list[str]:
         """Route question to appropriate specialized agents.
@@ -107,11 +166,14 @@ class MultiAgentOrchestrator:
         start_time = datetime.utcnow()
         try:
             # Run routing agent
-            response = routing_agent.run(question)
+            response_text, tools_called = self._run_agent_text(
+                agent=routing_agent,
+                prompt=question,
+                runner_prefix="routing",
+            )
             end_time = datetime.utcnow()
 
-            # Extract response text and parse JSON
-            response_text = self._extract_text(response)
+            # Parse JSON
             try:
                 routing_result = json.loads(response_text)
                 agents = routing_result.get("agents", [])
@@ -126,6 +188,7 @@ class MultiAgentOrchestrator:
                 end_time=end_time,
                 status="success",
                 output=response_text,
+                tools_called=",".join(tools_called) if tools_called else None,
             )
 
             return agents
@@ -169,11 +232,13 @@ class MultiAgentOrchestrator:
             start_time = datetime.utcnow()
             try:
                 agent = agent_map[agent_name]
-                response = agent.run(question)
+                response_text, tools_called = self._run_agent_text(
+                    agent=agent,
+                    prompt=question,
+                    runner_prefix=agent_name,
+                )
                 end_time = datetime.utcnow()
 
-                # Extract response text
-                response_text = self._extract_text(response)
                 outputs[agent_name] = response_text
 
                 # Log agent run
@@ -183,6 +248,7 @@ class MultiAgentOrchestrator:
                     end_time=end_time,
                     status="success",
                     output=response_text,
+                    tools_called=",".join(tools_called) if tools_called else None,
                 )
             except Exception as e:
                 logger.error(f"{agent_name} failed: {str(e)}")
@@ -223,11 +289,12 @@ Agent Outputs:
 Now synthesize these outputs into a cohesive, professional final answer."""
 
             # Run answer agent
-            response = answer_agent.run(synthesis_prompt)
+            response_text, tools_called = self._run_agent_text(
+                agent=answer_agent,
+                prompt=synthesis_prompt,
+                runner_prefix="answer",
+            )
             end_time = datetime.utcnow()
-
-            # Extract response text
-            response_text = self._extract_text(response)
 
             # Log agent run
             self._log_agent_run(
@@ -236,6 +303,7 @@ Now synthesize these outputs into a cohesive, professional final answer."""
                 end_time=end_time,
                 status="success",
                 output=response_text,
+                tools_called=",".join(tools_called) if tools_called else None,
             )
 
             return response_text
@@ -352,3 +420,86 @@ Now synthesize these outputs into a cohesive, professional final answer."""
         if hasattr(response, "__str__"):
             return str(response)
         return str(response)
+
+    def _run_agent_text(
+        self, agent: Any, prompt: str, runner_prefix: str
+    ) -> tuple[str, list[str]]:
+        """Run an ADK agent and normalize output text.
+
+        For compatibility with existing tests that mock `agent.run(prompt)`,
+        this first attempts the direct call. If that fails with ADK runtime
+        signature errors, it falls back to Runner-based execution.
+        """
+        try:
+            direct_response = agent.run(prompt)
+            return self._extract_text(direct_response), []
+        except TypeError as e:
+            error_text = str(e)
+            if "BaseNode.run()" not in error_text and "positional argument" not in error_text:
+                raise
+            return self._run_agent_with_runner(agent, prompt, runner_prefix)
+
+    def _run_agent_with_runner(
+        self, agent: Any, prompt: str, runner_prefix: str
+    ) -> tuple[str, list[str]]:
+        """Run agent using ADK Runner and extract final text output."""
+        runner = Runner(
+            app_name="portfolio_orchestrator",
+            agent=agent,
+            session_service=self._adk_session_service,
+            auto_create_session=True,
+        )
+
+        session_id = f"{runner_prefix}-{uuid.uuid4()}"
+        user_message = types.Content(
+            role="user",
+            parts=[types.Part(text=prompt)],
+        )
+
+        output_fragments: list[str] = []
+        tools_called: list[str] = []
+        for event in runner.run(
+            user_id="portfolio_orchestrator",
+            session_id=session_id,
+            new_message=user_message,
+        ):
+            tool_name = self._extract_tool_name_from_event(event)
+            if tool_name:
+                tools_called.append(tool_name)
+            text = self._extract_text_from_event(event)
+            if text:
+                output_fragments.append(text)
+
+        return (
+            "\n".join(fragment for fragment in output_fragments if fragment).strip(),
+            tools_called,
+        )
+
+    def _extract_text_from_event(self, event: Any) -> str:
+        """Extract human-readable text from ADK event payloads."""
+        content = getattr(event, "content", None)
+        if not content:
+            return ""
+
+        parts = getattr(content, "parts", None) or []
+        texts: list[str] = []
+        for part in parts:
+            text = getattr(part, "text", None)
+            if text:
+                texts.append(text)
+
+        return "\n".join(texts).strip()
+
+    def _extract_tool_name_from_event(self, event: Any) -> str | None:
+        """Extract tool name from ADK function-call event parts."""
+        content = getattr(event, "content", None)
+        if not content:
+            return None
+
+        parts = getattr(content, "parts", None) or []
+        for part in parts:
+            function_call = getattr(part, "function_call", None)
+            if function_call and getattr(function_call, "name", None):
+                return function_call.name
+
+        return None

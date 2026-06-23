@@ -186,6 +186,14 @@ def run_multi_agent(
             "answer": answer,
             "question_id": question_record.id,
             "agent_runs_count": len(orchestrator.agent_runs),
+            "agent_runs": [
+                {
+                    "agent_name": run.get("agent_name"),
+                    "status": run.get("status"),
+                    "tools_called": run.get("tools_called"),
+                }
+                for run in orchestrator.agent_runs
+            ],
         }
     except Exception as e:
         logger.log_struct(
