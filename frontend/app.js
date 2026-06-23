@@ -281,18 +281,13 @@ async function handleSendMessage(messageText) {
     scrollToBottom();
     
     try {
-        // 4. Send request to backend /run
-        const response = await fetch(`${API_BASE}/run`, {
+        // 4. Send request to backend /run-multi-agent (multi-agent orchestration)
+        const response = await fetch(`${API_BASE}/run-multi-agent`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                appName: APP_NAME,
-                userId: USER_ID,
-                sessionId: currentSessionId,
-                newMessage: {
-                    role: "user",
-                    parts: [{ text: messageText }]
-                }
+                session_id: currentSessionId,
+                message: messageText
             })
         });
         
@@ -303,37 +298,19 @@ async function handleSendMessage(messageText) {
             throw new Error("Backend response error");
         }
         
-        const events = await response.json();
+        const result = await response.json();
         
-        // 5. Parse returned events
-        if (events && events.length > 0) {
-            events.forEach(event => {
-                // Render any tool executions
-                if (event.content && event.content.parts) {
-                    event.content.parts.forEach(part => {
-                        if (part.functionCall) {
-                            renderToolCallBadge(part.functionCall.name, part.functionCall.args);
-                        }
-                    });
-                }
-                
-                // Render agent responses
-                let agentReply = "";
-                if (event.content && event.content.parts) {
-                    agentReply = event.content.parts
-                        .filter(p => p.text)
-                        .map(p => p.text)
-                        .join("");
-                } else if (event.output && typeof event.output === "string") {
-                    agentReply = event.output;
-                }
-                
-                if (agentReply.trim() && event.author !== "user" && event.content?.role !== "user") {
-                    appendMessageBubble(agentReply, "agent");
-                }
-            });
+        // 5. Handle response from multi-agent orchestration
+        if (result.status === "success" && result.answer) {
+            // Display the agent's synthesized answer
+            appendMessageBubble(result.answer, "agent");
+            
+            // Optionally show agent runs count (metadata)
+            if (result.agent_runs_count && result.agent_runs_count > 0) {
+                console.log(`✓ Orchestrated with ${result.agent_runs_count} agent(s) (question_id: ${result.question_id})`);
+            }
         } else {
-            appendMessageBubble("I couldn't fetch an answer. Please try again.", "agent");
+            appendMessageBubble(result.message || "I couldn't fetch an answer. Please try again.", "agent");
         }
         
     } catch (err) {
