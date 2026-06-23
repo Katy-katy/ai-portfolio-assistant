@@ -17,6 +17,7 @@ My contributions:
 - Production monitoring
 - Working on model explainability and identifying root causes of misclassifications.
 - creating graphana dashboards for monitoring of the model.
+- model evaluation: evaluation was a core part of development. I maintained separate training, validation, and test datasets and tracked classification metrics including accuracy, precision, recall, and confusion matrices. I regularly analyzed misclassified tickets to identify labeling issues and emerging patterns. Those insights fed back into data collection and model retraining. In production, we monitored prediction distributions and business metrics to detect model drift and performance degradation over time.
 
 Technologies:
 FastText
