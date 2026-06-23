@@ -14,7 +14,7 @@
 import os
 
 import google.auth
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 
@@ -34,10 +34,19 @@ allow_origins = (
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Configure persistent database storage using SQLite
+# Configure persistent database storage.
+# Priority:
+# 1) SESSION_SERVICE_URI (explicit ADK session DB URI)
+# 2) DATABASE_URL (shared app DB URI)
+# 3) Local SQLite fallback
 BASE_DIR = os.path.abspath(os.path.join(AGENT_DIR, ".."))
 db_path = os.path.join(BASE_DIR, "database", "portfolio.db")
-session_service_uri = f"sqlite:///{db_path}"
+default_sqlite_uri = f"sqlite:///{db_path}"
+session_service_uri = (
+    os.environ.get("SESSION_SERVICE_URI")
+    or os.environ.get("DATABASE_URL")
+    or default_sqlite_uri
+)
 
 artifact_service_uri = f"gs://{logs_bucket_name}" if logs_bucket_name else None
 

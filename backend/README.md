@@ -81,6 +81,22 @@ agents-cli deploy
 To add CI/CD and Terraform, run `agents-cli scaffold enhance`.
 To set up your production infrastructure, run `agents-cli infra cicd`.
 
+## Database Configuration
+
+By default, the app uses local SQLite.
+
+To switch to Postgres, set `DATABASE_URL` before starting the server:
+
+```bash
+export DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:5432/DB_NAME"
+```
+
+For ADK session storage specifically, you can override with `SESSION_SERVICE_URI`:
+
+```bash
+export SESSION_SERVICE_URI="postgresql+psycopg://USER:PASSWORD@HOST:5432/DB_NAME"
+```
+
 ## Observability
 
 Built-in telemetry exports to Cloud Trace, BigQuery, and Cloud Logging.
