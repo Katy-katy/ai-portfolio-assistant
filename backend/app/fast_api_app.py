@@ -27,6 +27,17 @@ from app.tools import is_question_on_topic
 from app.database import get_db, Question, UserSession, init_db
 from app.orchestration import MultiAgentOrchestrator
 
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate when model token telemetry is unavailable.
+
+    Uses a conservative chars/4 heuristic commonly used for English text.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return 0
+    return max(1, len(stripped) // 4)
+
 setup_telemetry()
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
@@ -160,15 +171,39 @@ def run_multi_agent(
         db.commit()
         db.refresh(question_record)
 
-        # Run orchestrator
+        # Run orchestrator and capture end-to-end latency for this question.
+        started_at = datetime.utcnow()
         orchestrator = MultiAgentOrchestrator(db)
         answer = orchestrator.run(message)
+        finished_at = datetime.utcnow()
 
         # Save agent runs
         orchestrator.save_agent_runs(question_record.id)
 
-        # Update question record with answer
+        # Update question record with answer and run metadata
+        latency_ms = int((finished_at - started_at).total_seconds() * 1000)
+        specialized_agents = [
+            run.get("agent_name")
+            for run in orchestrator.agent_runs
+            if run.get("agent_name") in {"resume_agent", "skills_agent", "project_agent"}
+            and run.get("status") == "success"
+        ]
+
+        if len(set(specialized_agents)) == 1:
+            intent_value = specialized_agents[0]
+        elif len(set(specialized_agents)) > 1:
+            intent_value = "multi_domain"
+        else:
+            intent_value = "unknown"
+
+        total_tokens = sum((run.get("tokens_used") or 0) for run in orchestrator.agent_runs)
+        if total_tokens <= 0:
+            total_tokens = _estimate_tokens(message) + _estimate_tokens(answer)
+
         question_record.answer = answer
+        question_record.intent = intent_value
+        question_record.latency_ms = latency_ms
+        question_record.tokens_used = total_tokens
         db.commit()
 
         logger.log_struct(
