@@ -17,6 +17,40 @@ import os
 # Resolve the project root directory
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
+# Keywords that indicate a question is about Kate's professional profile
+ON_TOPIC_KEYWORDS = {
+    # General portfolio/career
+    "kate", "experience", "project", "skill", "background", "career", "resume", "cv", "education", "degree", "work", "job",
+    # Technical skills
+    "python", "java", "javascript", "sql", "machine learning", "nlp", "ai", "llm", "agent", "docker", "kubernetes", "gcp", "aws", "react", "fastapi",
+    # Specific projects
+    "lamabot", "babyyoda", "ticket", "classification", "linkedin", "slac",
+    # Experience contexts
+    "linkedin", "slac", "stanford", "georgia tech", "intern", "engineer", "senior", "lead", "manager",
+    # Education
+    "master", "bachelor", "phd", "graduate", "undergraduate", "certification",
+    # Publications/achievements
+    "paper", "publication", "award", "achievement", "contribution", "patent",
+}
+
+def is_question_on_topic(question: str) -> bool:
+    """Check if a question is about Kate's professional experience.
+
+    Args:
+        question: The user's question.
+
+    Returns:
+        True if the question appears to be about Kate's professional profile.
+    """
+    question_lower = question.lower()
+    # Check for on-topic keywords
+    for keyword in ON_TOPIC_KEYWORDS:
+        if keyword in question_lower:
+            return True
+    # If no keywords found, consider it off-topic
+    return False
+
+
 def get_skills() -> dict:
     """Gets Kate's core technical skills and competencies.
 

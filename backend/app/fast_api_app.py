@@ -14,12 +14,13 @@
 import os
 
 import google.auth
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+from app.tools import is_question_on_topic
 
 setup_telemetry()
 _, project_id = google.auth.default()
@@ -74,6 +75,30 @@ def health_check() -> dict[str, str]:
         Status and timestamp indicating the service is healthy.
     """
     return {"status": "ok", "service": "portfolio_assistant"}
+
+
+@app.post("/validate-question")
+def validate_question(question: dict[str, str]) -> dict[str, bool | str]:
+    """Validate if a question is about Kate's professional experience.
+
+    Args:
+        question: Dict with 'text' key containing the user's question.
+
+    Returns:
+        Dict with 'is_on_topic' boolean and 'message' if off-topic.
+    """
+    text = question.get("text", "").strip()
+    if not text:
+        return {"is_on_topic": False, "message": "Please ask a question."}
+
+    is_on_topic = is_question_on_topic(text)
+    if not is_on_topic:
+        return {
+            "is_on_topic": False,
+            "message": "I'm designed to answer questions about Kate's professional experience. Ask me about her skills, projects, or career background!"
+        }
+
+    return {"is_on_topic": True}
 
 
 # Main execution
