@@ -4,43 +4,82 @@
 
 The portfolio assistant now uses a multi-agent orchestration system instead of a single monolithic agent. This provides better modularity, specialization, and debugging capabilities.
 
-## Agent Hierarchy
+## Agent Flow
 
+### Flowchart
+
+```mermaid
+flowchart TD
+  U[User Question] --> API[POST /run-multi-agent]
+  API --> Q[Create question row]
+  API --> ORCH[MultiAgentOrchestrator.run]
+
+  ORCH --> V{Validation Agent\nON_TOPIC?}
+  V -->|No| REJ[Return off-topic guidance]
+  V -->|Yes| R[Routing Agent]
+
+  R --> SA1[Resume Agent]
+  R --> SA2[Skills Agent]
+  R --> SA3[Project Agent]
+
+  SA1 --> T1[get_resume / get_aboutme]
+  SA2 --> T2[get_skills]
+  SA3 --> T3[get_projects_list / get_project_details]
+
+  SA1 --> A[Answer Agent synthesis]
+  SA2 --> A
+  SA3 --> A
+
+  A --> LOG[Persist agent_runs]
+  LOG --> META[Update question intent / latency_ms / tokens_used]
+  META --> RESP[Return answer + agent_runs]
+  REJ --> RESP
 ```
-┌─────────────────────────────────────┐
-│   User Question                     │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌──────────────────────────────┐
-│  1. Validation Agent         │ ✓ ON_TOPIC / ✗ OFF_TOPIC
-└────────────┬─────────────────┘
-             │
-             ▼ (if ON_TOPIC)
-┌──────────────────────────────┐
-│  2. Routing Agent            │ Determines which agents to invoke
-└────────────┬─────────────────┘
-             │
-        ┌────┴────┬──────────┐
-        ▼         ▼          ▼
-    ┌───────┐┌────────┐┌─────────┐
-    │Resume ││Skills  ││Project  │ Specialized Agents
-    │Agent  ││Agent   ││Agent    │ (run in parallel conceptually)
-    └───┬───┘└───┬────┘└────┬────┘
-        │        │          │
-        └────────┬──────────┘
-                 │
-                 ▼
-┌──────────────────────────────┐
-│  6. Answer Agent             │ Synthesizes final response
-└────────────┬─────────────────┘
-             │
-             ▼
-┌──────────────────────────────┐
-│  Final Answer + Logs         │
-│  - Agent runs recorded       │
-│  - Session updated           │
-└──────────────────────────────┘
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant API as FastAPI /run-multi-agent
+  participant DB as SQLite
+  participant ORCH as MultiAgentOrchestrator
+  participant VAL as Validation Agent
+  participant ROUTE as Routing Agent
+  participant RES as Resume Agent
+  participant SK as Skills Agent
+  participant PROJ as Project Agent
+  participant ANS as Answer Agent
+
+  FE->>API: POST session_id + message
+  API->>DB: INSERT questions row
+  API->>ORCH: run(message)
+
+  ORCH->>VAL: validate_question
+  VAL-->>ORCH: ON_TOPIC / OFF_TOPIC
+
+  alt OFF_TOPIC
+    ORCH-->>API: rejection message
+  else ON_TOPIC
+    ORCH->>ROUTE: route_question
+    ROUTE-->>ORCH: selected agents
+    par Specialist execution
+      ORCH->>RES: run (optional)
+      RES-->>ORCH: output + tools
+    and
+      ORCH->>SK: run (optional)
+      SK-->>ORCH: output + tools
+    and
+      ORCH->>PROJ: run (optional)
+      PROJ-->>ORCH: output + tools
+    end
+    ORCH->>ANS: synthesize_answer
+    ANS-->>ORCH: final answer
+  end
+
+  ORCH->>DB: INSERT agent_runs rows
+  API->>DB: UPDATE questions answer + intent + latency_ms + tokens_used
+  API-->>FE: JSON answer + agent_runs metadata
 ```
 
 ## Agents
@@ -165,7 +204,14 @@ tokens_used: 1200
   "status": "success",
   "answer": "Kate has strong expertise in Python, ML, NLP...",
   "question_id": 42,
-  "agent_runs_count": 6
+  "agent_runs_count": 6,
+  "agent_runs": [
+    {
+      "agent_name": "skills_agent",
+      "status": "success",
+      "tools_called": "get_skills"
+    }
+  ]
 }
 ```
 

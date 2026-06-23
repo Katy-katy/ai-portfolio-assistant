@@ -14,6 +14,38 @@ This project uses a multi-agent backend with a single-page frontend:
 - Trace metadata: Each question now stores intent, latency_ms, and tokens_used; each agent run stores agent name, status, output, and tools_called.
 - Frontend transparency: Tool badges show which tool ran and which agent triggered it.
 
+### Multi-Agent Flow Diagram
+
+```mermaid
+flowchart TD
+   A[Frontend UI\nPOST /run-multi-agent] --> B[FastAPI Endpoint\nrun_multi_agent]
+   B --> C[Create Question Row\nquestions table]
+   B --> D[MultiAgentOrchestrator]
+
+   D --> E{Validation Agent\nOn-topic?}
+   E -->|No| F[Return Off-topic Message]
+   E -->|Yes| G[Routing Agent\nSelect specialist agents]
+
+   G --> H[Resume Agent]
+   G --> I[Skills Agent]
+   G --> J[Project Agent]
+
+   H --> K[(Tool Calls\nget_resume/get_aboutme)]
+   I --> L[(Tool Calls\nget_skills)]
+   J --> M[(Tool Calls\nget_projects_list/get_project_details)]
+
+   H --> N[Answer Agent\nSynthesize final response]
+   I --> N
+   J --> N
+
+   N --> O[Save agent_runs traces\nagent_name/status/tools_called]
+   O --> P[Update question metadata\nintent/latency_ms/tokens_used]
+   P --> Q[Return JSON\nanswer + agent_runs]
+   F --> Q
+
+   Q --> R[Frontend Renders\nanswer + tool badges by agent]
+```
+
 ---
 
 ## Workspace Structure
