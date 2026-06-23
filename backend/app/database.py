@@ -24,7 +24,7 @@ DB_DIR = os.path.join(BASE_DIR, "database")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "portfolio.db")
 
-DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{DB_PATH}")
+DATABASE_URL = os.environ.get("DATABASE_URL") or f"sqlite:///{DB_PATH}"
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})

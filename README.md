@@ -8,11 +8,51 @@ A local prototype for a smart, conversational portfolio assistant built with ADK
 
 This project uses a multi-agent backend with a single-page frontend:
 - Multi-agent orchestration: Each message sent to POST /run-multi-agent runs through validation, routing, specialist agents, and final synthesis.
-- Specialist agents: Resume Agent, Skills Agent, and Project Agent use tools to fetch grounded information from local markdown files.
+- Specialist agents: Resume Agent, Skills Agent, and Project Agent use retrieval tools to fetch top relevant chunks per category.
 - Grounded answers (no hallucinations): Agents only answer from local knowledge files through tools.
 - Persistent storage: Question records and per-agent run traces are stored in SQLite at database/portfolio.db.
 - Trace metadata: Each question now stores intent, latency_ms, and tokens_used; each agent run stores agent name, status, output, and tools_called.
 - Frontend transparency: Tool badges show which tool ran and which agent triggered it.
+
+### Retrieval Design (RAG-style)
+
+- Skills Agent uses retrieve_skills_context(query, top_k)
+- Resume Agent uses retrieve_resume_context(query, top_k)
+- Project Agent uses retrieve_project_context(query, top_k)
+- All retrieval tools delegate to retrieve_context(query, category, top_k)
+
+Current backend modes are controlled by RAG_BACKEND:
+- local (default): in-memory chunk retrieval from markdown knowledge files
+- pgvector: reserved hook for PostgreSQL/pgvector backend
+- vertex: reserved hook for Vertex AI Vector Search backend
+
+### Enable pgvector Retrieval
+
+Set environment variables before starting backend:
+
+```bash
+export RAG_BACKEND=pgvector
+export PGVECTOR_DSN="postgresql://user:password@host:5432/dbname"
+export PGVECTOR_TABLE="knowledge_chunks"
+export PGVECTOR_EMBEDDING_DIM=768
+export RAG_AUTO_INGEST=true
+
+# Embeddings (Vertex AI recommended in this project)
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+export RAG_EMBEDDING_MODEL="text-embedding-004"
+```
+
+Notes:
+- On first run, the app creates the vector table/index and ingests markdown chunks.
+- Category-filtered search is applied per specialist agent (skills/resume/projects).
+- If pgvector config is missing or unavailable, retrieval falls back to local mode.
+
+Validate pgvector setup end-to-end:
+
+```bash
+./scripts/healthcheck_pgvector.sh
+```
 
 ### Multi-Agent Flow Diagram
 
@@ -81,6 +121,23 @@ ai-portfolio-assistant/
 ## Quick Start Guide
 
 Follow these steps to run the portfolio assistant locally:
+
+### Step 0: Environment Setup
+
+1. Create local environment file from template:
+
+```bash
+cp .env.example .env
+```
+
+2. Open `.env` and fill values you need (for example, GOOGLE_CLOUD_PROJECT, RAG_BACKEND, PGVECTOR_DSN).
+
+3. Start backend with env file loaded:
+
+```bash
+cd backend
+uv run uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8000 --reload --env-file ../.env
+```
 
 ### Step 1: Start the Backend API Server
 1. Navigate to the backend directory:

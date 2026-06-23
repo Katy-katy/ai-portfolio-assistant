@@ -28,11 +28,9 @@ from google.genai import types
 from google.adk.models import Gemini
 
 from .tools import (
-    get_skills,
-    get_aboutme,
-    get_resume,
-    get_projects_list,
-    get_project_details,
+    retrieve_skills_context,
+    retrieve_resume_context,
+    retrieve_project_context,
 )
 
 # ========== VALIDATION AGENT ==========
@@ -102,7 +100,9 @@ Your role is to answer questions about:
 - Her achievements and professional accomplishments
 - Her career progression and roles
 
-Use the get_resume tool to retrieve Kate's full resume when needed. Extract relevant sections that answer the user's specific question. Be concise and professional.
+Use retrieve_resume_context(query, top_k) to fetch the most relevant resume/about chunks for the current user question. Always pass the user question as query and use top_k=5 unless you need fewer chunks.
+
+Answer only from retrieved chunks. If relevant context is missing, clearly say you do not have enough information.
 
 Do NOT make up information. If the requested information is not in the resume, state that you don't have that information."""
 
@@ -113,7 +113,7 @@ resume_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=RESUME_INSTRUCTION,
-    tools=[get_resume, get_aboutme],
+    tools=[retrieve_resume_context],
 )
 
 # ========== SKILLS AGENT ==========
@@ -125,7 +125,9 @@ Your role is to answer questions about:
 - Her domain knowledge (machine learning, NLP, web development, etc.)
 - Her core competencies and areas of expertise
 
-Use the get_skills tool to retrieve Kate's full skills profile. Provide relevant skills that match the user's question. Be specific and organized.
+Use retrieve_skills_context(query, top_k) to fetch the most relevant skills chunks for the current user question. Always pass the user question as query and use top_k=5 unless you need fewer chunks.
+
+Answer only from retrieved chunks. If relevant context is missing, clearly say you do not have enough information.
 
 Do NOT make up skills. Only present information from the skills profile."""
 
@@ -136,7 +138,7 @@ skills_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=SKILLS_INSTRUCTION,
-    tools=[get_skills],
+    tools=[retrieve_skills_context],
 )
 
 # ========== PROJECT AGENT ==========
@@ -149,7 +151,9 @@ Your role is to answer questions about:
 - Technologies and tools used in projects
 - Project results and impact
 
-Use the get_projects_list and get_project_details tools to retrieve project information. Provide detailed, relevant information about the specific project the user asks about.
+Use retrieve_project_context(query, top_k) to fetch the most relevant project chunks for the current user question. Always pass the user question as query and use top_k=5 unless you need fewer chunks.
+
+Answer only from retrieved chunks. If relevant context is missing, clearly say you do not have enough information.
 
 Do NOT make up project details. Only present information from the project files."""
 
@@ -160,7 +164,7 @@ project_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=PROJECT_INSTRUCTION,
-    tools=[get_projects_list, get_project_details],
+    tools=[retrieve_project_context],
 )
 
 # ========== ANSWER AGENT ==========
