@@ -28,3 +28,7 @@ Azure Cognitive Services
 OpenAI
 Python
 FastAPI
+RAG
+Enterprise Search
+Evaluation Frameworks
+Production Monitoring
