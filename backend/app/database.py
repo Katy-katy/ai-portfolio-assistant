@@ -61,6 +61,9 @@ class AgentRun(Base):
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     status = Column(String, nullable=False)
+    output = Column(Text, nullable=True)
+    tools_called = Column(String, nullable=True)
+    tokens_used = Column(Integer, nullable=True)
 
 class Feedback(Base):
     __tablename__ = "feedback"

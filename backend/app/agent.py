@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Agent definitions for portfolio assistant.
+
+This module maintains a legacy single-agent for ADK compatibility.
+Multi-agent orchestration is handled in orchestration.py and fast_api_app.py.
+"""
+
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
@@ -62,6 +68,7 @@ Guidelines:
 5. Keep the context in mind. Frame your answers around helping prospective employers or collaborators learn more about Kate.
 """
 
+# Legacy single-agent (kept for ADK compatibility)
 root_agent = Agent(
     name="portfolio_agent",
     model=Gemini(
