@@ -26,6 +26,7 @@ import json
 import logging
 import re
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any
 
@@ -224,44 +225,106 @@ class MultiAgentOrchestrator:
             "project_agent": project_agent,
         }
 
-        for agent_name in agents_to_run:
+        selected_agents: list[tuple[int, str, Any]] = []
+        for order, agent_name in enumerate(agents_to_run):
             if agent_name not in agent_map:
                 logger.warning(f"Unknown agent: {agent_name}")
                 continue
+            selected_agents.append((order, agent_name, agent_map[agent_name]))
 
-            start_time = datetime.utcnow()
-            try:
-                agent = agent_map[agent_name]
-                response_text, tools_called = self._run_agent_text(
-                    agent=agent,
-                    prompt=question,
-                    runner_prefix=agent_name,
-                )
-                end_time = datetime.utcnow()
+        if not selected_agents:
+            return outputs
 
-                outputs[agent_name] = response_text
+        runs: list[dict[str, Any]] = []
+        if len(selected_agents) == 1:
+            order, agent_name, agent = selected_agents[0]
+            runs.append(self._execute_specialized_agent(order, agent_name, agent, question))
+        else:
+            max_workers = min(3, len(selected_agents))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_map = {
+                    executor.submit(
+                        self._execute_specialized_agent,
+                        order,
+                        agent_name,
+                        agent,
+                        question,
+                    ): (order, agent_name)
+                    for order, agent_name, agent in selected_agents
+                }
 
-                # Log agent run
-                self._log_agent_run(
-                    agent_name=agent_name,
-                    start_time=start_time,
-                    end_time=end_time,
-                    status="success",
-                    output=response_text,
-                    tools_called=",".join(tools_called) if tools_called else None,
-                )
-            except Exception as e:
-                logger.error(f"{agent_name} failed: {str(e)}")
-                end_time = datetime.utcnow()
-                self._log_agent_run(
-                    agent_name=agent_name,
-                    start_time=start_time,
-                    end_time=end_time,
-                    status="error",
-                    output=str(e),
-                )
+                for future in as_completed(future_map):
+                    order, agent_name = future_map[future]
+                    try:
+                        runs.append(future.result())
+                    except Exception as e:
+                        logger.error(f"{agent_name} failed in parallel execution: {str(e)}")
+                        end_time = datetime.utcnow()
+                        runs.append(
+                            {
+                                "order": order,
+                                "agent_name": agent_name,
+                                "start_time": end_time,
+                                "end_time": end_time,
+                                "status": "error",
+                                "output": str(e),
+                                "tools_called": None,
+                            }
+                        )
+
+        for run in sorted(runs, key=lambda item: item["order"]):
+            if run["status"] == "success":
+                outputs[run["agent_name"]] = run["output"]
+
+            self._log_agent_run(
+                agent_name=run["agent_name"],
+                start_time=run["start_time"],
+                end_time=run["end_time"],
+                status=run["status"],
+                output=run.get("output"),
+                tools_called=run.get("tools_called"),
+            )
 
         return outputs
+
+    def _execute_specialized_agent(
+        self,
+        order: int,
+        agent_name: str,
+        agent: Any,
+        question: str,
+    ) -> dict[str, Any]:
+        """Run one specialized agent and return structured run metadata."""
+        start_time = datetime.utcnow()
+        try:
+            response_text, tools_called = self._run_agent_text(
+                agent=agent,
+                prompt=question,
+                runner_prefix=agent_name,
+            )
+            end_time = datetime.utcnow()
+
+            return {
+                "order": order,
+                "agent_name": agent_name,
+                "start_time": start_time,
+                "end_time": end_time,
+                "status": "success",
+                "output": response_text,
+                "tools_called": ",".join(tools_called) if tools_called else None,
+            }
+        except Exception as e:
+            logger.error(f"{agent_name} failed: {str(e)}")
+            end_time = datetime.utcnow()
+            return {
+                "order": order,
+                "agent_name": agent_name,
+                "start_time": start_time,
+                "end_time": end_time,
+                "status": "error",
+                "output": str(e),
+                "tools_called": None,
+            }
 
     def synthesize_answer(
         self, question: str, specialized_outputs: dict[str, str]
@@ -341,18 +404,31 @@ Now synthesize these outputs into a cohesive, professional final answer."""
         # Step 3: Run specialized agents
         specialized_outputs = self.run_specialized_agents(question, agents_to_run)
 
+        # Fast path: if exactly one specialist returned output, skip synthesis.
+        if len(specialized_outputs) == 1:
+            return next(iter(specialized_outputs.values()))
+
         # Step 4: Synthesize
         final_answer = self.synthesize_answer(question, specialized_outputs)
 
         return final_answer
 
-    def save_agent_runs(self, question_id: int) -> None:
+    def save_agent_runs(
+        self,
+        question_id: int,
+        cache_request_stats: dict[str, Any] | None = None,
+    ) -> None:
         """Save all agent runs to database.
 
         Args:
             question_id: ID of the question in database
+            cache_request_stats: Request-level retrieval cache counters
         """
         for run in self.agent_runs:
+            cache_stats = self._cache_stats_for_agent(
+                agent_name=run["agent_name"],
+                cache_request_stats=cache_request_stats,
+            )
             agent_run = AgentRun(
                 question_id=question_id,
                 agent_name=run["agent_name"],
@@ -362,9 +438,54 @@ Now synthesize these outputs into a cohesive, professional final answer."""
                 output=run.get("output"),
                 tools_called=run.get("tools_called"),
                 tokens_used=run.get("tokens_used"),
+                cache_hits=cache_stats.get("hits"),
+                cache_misses=cache_stats.get("misses"),
+                cache_expired=cache_stats.get("expired"),
+                cache_sets=cache_stats.get("sets"),
+                cache_lookups=cache_stats.get("lookups"),
+                cache_hit_rate=cache_stats.get("hit_rate"),
+                cache_by_category=cache_stats.get("by_category"),
             )
             self.db.add(agent_run)
         self.db.commit()
+
+    def _cache_stats_for_agent(
+        self,
+        agent_name: str,
+        cache_request_stats: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Map request-level cache stats to a single agent run context."""
+        if not cache_request_stats:
+            return {}
+
+        category_by_agent = {
+            "resume_agent": "resume",
+            "skills_agent": "skills",
+            "project_agent": "projects",
+        }
+        by_category = cache_request_stats.get("by_category") or {}
+        category = category_by_agent.get(agent_name)
+        if not category:
+            return {}
+
+        category_stats = by_category.get(category, {}) if category else {}
+
+        if category_stats:
+            return {
+                "hits": int(category_stats.get("hits", 0)),
+                "misses": int(category_stats.get("misses", 0)),
+                "expired": int(category_stats.get("expired", 0)),
+                "sets": int(category_stats.get("sets", 0)),
+                "lookups": int(category_stats.get("lookups", 0)),
+                "hit_rate": float(category_stats.get("hit_rate", 0.0)),
+                "by_category": json.dumps(
+                    {category: category_stats},
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            }
+
+        return {}
 
     def _log_agent_run(
         self,

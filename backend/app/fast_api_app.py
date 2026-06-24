@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import json
 from datetime import datetime
 from typing import Any
 
@@ -23,7 +24,11 @@ from sqlalchemy.orm import Session
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
-from app.tools import is_question_on_topic, index_pgvector_documents
+from app.tools import (
+    get_retrieval_cache_stats,
+    index_pgvector_documents,
+    is_question_on_topic,
+)
 from app.database import get_db, Question, UserSession, init_db
 from app.orchestration import MultiAgentOrchestrator
 
@@ -37,6 +42,39 @@ def _estimate_tokens(text: str) -> int:
     if not stripped:
         return 0
     return max(1, len(stripped) // 4)
+
+
+def _cache_stats_delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    """Compute per-request delta for retrieval cache counters."""
+    keys = ("hits", "misses", "expired", "sets", "lookups")
+    delta = {
+        key: int(after.get(key, 0)) - int(before.get(key, 0))
+        for key in keys
+    }
+    lookups = delta["lookups"]
+    delta_hit_rate = (delta["hits"] / lookups) if lookups > 0 else 0.0
+    delta["hit_rate"] = round(delta_hit_rate, 4)
+
+    before_categories = before.get("by_category") or {}
+    after_categories = after.get("by_category") or {}
+    category_names = set(before_categories.keys()) | set(after_categories.keys())
+    by_category: dict[str, Any] = {}
+    for category in sorted(category_names):
+        before_category = before_categories.get(category, {})
+        after_category = after_categories.get(category, {})
+        category_delta = {
+            key: int(after_category.get(key, 0)) - int(before_category.get(key, 0))
+            for key in keys
+        }
+        category_lookups = category_delta["lookups"]
+        category_hit_rate = (
+            category_delta["hits"] / category_lookups if category_lookups > 0 else 0.0
+        )
+        category_delta["hit_rate"] = round(category_hit_rate, 4)
+        by_category[category] = category_delta
+
+    delta["by_category"] = by_category
+    return delta
 
 setup_telemetry()
 _, project_id = google.auth.default()
@@ -204,12 +242,18 @@ def run_multi_agent(
 
         # Run orchestrator and capture end-to-end latency for this question.
         started_at = datetime.utcnow()
+        cache_before = get_retrieval_cache_stats()
         orchestrator = MultiAgentOrchestrator(db)
         answer = orchestrator.run(message)
+        cache_after = get_retrieval_cache_stats()
+        cache_request = _cache_stats_delta(cache_before, cache_after)
         finished_at = datetime.utcnow()
 
         # Save agent runs
-        orchestrator.save_agent_runs(question_record.id)
+        orchestrator.save_agent_runs(
+            question_record.id,
+            cache_request_stats=cache_request,
+        )
 
         # Update question record with answer and run metadata
         latency_ms = int((finished_at - started_at).total_seconds() * 1000)
@@ -235,6 +279,17 @@ def run_multi_agent(
         question_record.intent = intent_value
         question_record.latency_ms = latency_ms
         question_record.tokens_used = total_tokens
+        question_record.cache_hits = int(cache_request.get("hits", 0))
+        question_record.cache_misses = int(cache_request.get("misses", 0))
+        question_record.cache_expired = int(cache_request.get("expired", 0))
+        question_record.cache_sets = int(cache_request.get("sets", 0))
+        question_record.cache_lookups = int(cache_request.get("lookups", 0))
+        question_record.cache_hit_rate = float(cache_request.get("hit_rate", 0.0))
+        question_record.cache_by_category = json.dumps(
+            cache_request.get("by_category", {}),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
         db.commit()
 
         logger.log_struct(
@@ -252,6 +307,10 @@ def run_multi_agent(
             "answer": answer,
             "question_id": question_record.id,
             "agent_runs_count": len(orchestrator.agent_runs),
+            "retrieval_cache": {
+                "request": cache_request,
+                "total": cache_after,
+            },
             "agent_runs": [
                 {
                     "agent_name": run.get("agent_name"),

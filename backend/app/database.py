@@ -14,7 +14,18 @@
 
 import os
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    inspect,
+    text,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Resolve the database path (pointing to database/portfolio.db)
@@ -50,6 +61,13 @@ class Question(Base):
     intent = Column(String, nullable=True)
     latency_ms = Column(Integer, nullable=True)
     tokens_used = Column(Integer, nullable=True)
+    cache_hits = Column(Integer, nullable=True)
+    cache_misses = Column(Integer, nullable=True)
+    cache_expired = Column(Integer, nullable=True)
+    cache_sets = Column(Integer, nullable=True)
+    cache_lookups = Column(Integer, nullable=True)
+    cache_hit_rate = Column(Float, nullable=True)
+    cache_by_category = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 class AgentRun(Base):
@@ -64,6 +82,13 @@ class AgentRun(Base):
     output = Column(Text, nullable=True)
     tools_called = Column(String, nullable=True)
     tokens_used = Column(Integer, nullable=True)
+    cache_hits = Column(Integer, nullable=True)
+    cache_misses = Column(Integer, nullable=True)
+    cache_expired = Column(Integer, nullable=True)
+    cache_sets = Column(Integer, nullable=True)
+    cache_lookups = Column(Integer, nullable=True)
+    cache_hit_rate = Column(Float, nullable=True)
+    cache_by_category = Column(Text, nullable=True)
 
 class Feedback(Base):
     __tablename__ = "feedback"
@@ -73,8 +98,52 @@ class Feedback(Base):
     rating = Column(Integer, nullable=False)
     comments = Column(Text, nullable=True)
 
+
+def _ensure_column_if_missing(table_name: str, column_name: str, column_sql: str) -> None:
+    """Add a column to an existing table if it does not exist yet."""
+    inspector = inspect(engine)
+    existing = {col["name"] for col in inspector.get_columns(table_name)}
+    if column_name in existing:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"))
+
+
+def _ensure_cache_metrics_schema() -> None:
+    """Ensure cache metric columns exist for existing installations."""
+    additions = {
+        "questions": [
+            ("cache_hits", "INTEGER"),
+            ("cache_misses", "INTEGER"),
+            ("cache_expired", "INTEGER"),
+            ("cache_sets", "INTEGER"),
+            ("cache_lookups", "INTEGER"),
+            ("cache_hit_rate", "FLOAT"),
+            ("cache_by_category", "TEXT"),
+        ],
+        "agent_runs": [
+            ("cache_hits", "INTEGER"),
+            ("cache_misses", "INTEGER"),
+            ("cache_expired", "INTEGER"),
+            ("cache_sets", "INTEGER"),
+            ("cache_lookups", "INTEGER"),
+            ("cache_hit_rate", "FLOAT"),
+            ("cache_by_category", "TEXT"),
+        ],
+    }
+
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    for table_name, columns in additions.items():
+        if table_name not in tables:
+            continue
+        for column_name, column_sql in columns:
+            _ensure_column_if_missing(table_name, column_name, column_sql)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _ensure_cache_metrics_schema()
 
 def get_db():
     db = SessionLocal()

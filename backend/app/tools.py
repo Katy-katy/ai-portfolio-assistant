@@ -16,6 +16,7 @@ import os
 import re
 import threading
 import hashlib
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from pypdf import PdfReader
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 TOKEN_RE = re.compile(r"[a-zA-Z0-9_]+")
-DEFAULT_TOP_K = 5
+DEFAULT_TOP_K = 3
 MAX_CHUNK_CHARS = 900
 
 # Keywords that indicate a question is about Kate's professional profile
@@ -61,10 +62,144 @@ _CHUNKS_LOCK = threading.Lock()
 _CHUNKS_CACHE: list[Chunk] | None = None
 _EMBED_LOCK = threading.Lock()
 _EMBED_CLIENT: Client | None = None
+_RETRIEVE_CACHE_LOCK = threading.Lock()
+_RETRIEVE_CACHE: dict[tuple[str, str, str, int], tuple[float, list[dict]]] = {}
+_RETRIEVE_CACHE_STATS = {
+    "hits": 0,
+    "misses": 0,
+    "expired": 0,
+    "sets": 0,
+}
+_RETRIEVE_CACHE_BY_CATEGORY: dict[str, dict[str, int]] = {}
+
+
+def _new_cache_counter() -> dict[str, int]:
+    return {
+        "hits": 0,
+        "misses": 0,
+        "expired": 0,
+        "sets": 0,
+    }
+
+
+def _normalize_cache_category(category: str) -> str:
+    normalized = category.strip().lower()
+    return normalized if normalized else "all"
+
+
+def _get_category_cache_counter(category: str) -> dict[str, int]:
+    normalized = _normalize_cache_category(category)
+    counters = _RETRIEVE_CACHE_BY_CATEGORY.get(normalized)
+    if counters is None:
+        counters = _new_cache_counter()
+        _RETRIEVE_CACHE_BY_CATEGORY[normalized] = counters
+    return counters
+
+
+def _increment_cache_stat(metric: str, category: str) -> None:
+    _RETRIEVE_CACHE_STATS[metric] += 1
+    category_counter = _get_category_cache_counter(category)
+    category_counter[metric] += 1
+
+
+def _counter_with_derived(counters: dict[str, int]) -> dict[str, float | int]:
+    hits = int(counters.get("hits", 0))
+    misses = int(counters.get("misses", 0))
+    expired = int(counters.get("expired", 0))
+    sets = int(counters.get("sets", 0))
+    lookups = hits + misses
+    hit_rate = (hits / lookups) if lookups > 0 else 0.0
+    return {
+        "hits": hits,
+        "misses": misses,
+        "expired": expired,
+        "sets": sets,
+        "lookups": lookups,
+        "hit_rate": round(hit_rate, 4),
+    }
 
 
 def _tokenize(text: str) -> set[str]:
     return {t.lower() for t in TOKEN_RE.findall(text)}
+
+
+def _retrieve_cache_ttl_sec() -> int:
+    """Return retrieval cache TTL in seconds."""
+    try:
+        return max(0, int(os.getenv("RETRIEVE_CACHE_TTL_SEC", "300")))
+    except ValueError:
+        return 300
+
+
+def _retrieve_cache_key(
+    backend: str,
+    category: str,
+    query: str,
+    top_k: int,
+) -> tuple[str, str, str, int]:
+    normalized_query = " ".join(query.lower().split())
+    return (backend, category, normalized_query, top_k)
+
+
+def _get_cached_retrieval(
+    backend: str,
+    category: str,
+    query: str,
+    top_k: int,
+) -> list[dict] | None:
+    """Get cached retrieval result if still valid."""
+    ttl = _retrieve_cache_ttl_sec()
+    if ttl <= 0:
+        return None
+
+    key = _retrieve_cache_key(backend, category, query, top_k)
+    now = time.monotonic()
+
+    with _RETRIEVE_CACHE_LOCK:
+        entry = _RETRIEVE_CACHE.get(key)
+        if not entry:
+            _increment_cache_stat("misses", category)
+            return None
+
+        stored_at, chunks = entry
+        if now - stored_at > ttl:
+            _RETRIEVE_CACHE.pop(key, None)
+            _increment_cache_stat("expired", category)
+            _increment_cache_stat("misses", category)
+            return None
+        _increment_cache_stat("hits", category)
+        return chunks
+
+
+def _set_cached_retrieval(
+    backend: str,
+    category: str,
+    query: str,
+    top_k: int,
+    chunks: list[dict],
+) -> None:
+    """Store retrieval result in cache for short-lived reuse."""
+    ttl = _retrieve_cache_ttl_sec()
+    if ttl <= 0:
+        return
+
+    key = _retrieve_cache_key(backend, category, query, top_k)
+    with _RETRIEVE_CACHE_LOCK:
+        _RETRIEVE_CACHE[key] = (time.monotonic(), chunks)
+        _increment_cache_stat("sets", category)
+
+
+def get_retrieval_cache_stats() -> dict[str, float | int]:
+    """Return aggregate retrieval-cache counters since process start."""
+    with _RETRIEVE_CACHE_LOCK:
+        total = _counter_with_derived(_RETRIEVE_CACHE_STATS)
+        by_category = {
+            category: _counter_with_derived(counters)
+            for category, counters in _RETRIEVE_CACHE_BY_CATEGORY.items()
+        }
+
+    total["by_category"] = by_category
+    return total
 
 
 def _split_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
@@ -513,7 +648,23 @@ def retrieve_context(query: str, category: str, top_k: int = DEFAULT_TOP_K) -> d
         backend = "local"
 
     if backend == "pgvector":
-        chunks = _retrieve_pgvector(query, normalized_category, top_k)
+        cached_chunks = _get_cached_retrieval(
+            backend=backend,
+            category=normalized_category,
+            query=query,
+            top_k=top_k,
+        )
+        if cached_chunks is not None:
+            chunks = cached_chunks
+        else:
+            chunks = _retrieve_pgvector(query, normalized_category, top_k)
+            _set_cached_retrieval(
+                backend=backend,
+                category=normalized_category,
+                query=query,
+                top_k=top_k,
+                chunks=chunks,
+            )
     elif backend == "vertex":
         chunks = _retrieve_vertex(query, normalized_category, top_k)
     else:
