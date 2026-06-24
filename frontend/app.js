@@ -7,6 +7,7 @@ const APP_NAME = "app";
 
 let currentSessionId = null;
 let sessions = [];
+const submittedFeedback = new Map();
 
 // DOM Elements
 const sidebar = document.querySelector(".sidebar");
@@ -320,7 +321,10 @@ async function handleSendMessage(messageText) {
         // 5. Handle response from multi-agent orchestration
         if (result.status === "success" && result.answer) {
             // Display the agent's synthesized answer
-            appendMessageBubble(result.answer, "agent");
+            const answerRow = appendMessageBubble(result.answer, "agent");
+            if (result.question_id) {
+                renderFeedbackButtons(answerRow, result.question_id);
+            }
             
             // Optionally show agent runs count (metadata)
             if (result.agent_runs_count && result.agent_runs_count > 0) {
@@ -358,6 +362,104 @@ function appendMessageBubble(text, sender) {
     row.appendChild(bubble);
     messagesContainer.appendChild(row);
     return row;
+}
+
+function renderFeedbackButtons(messageRow, questionId) {
+    const bubble = messageRow.querySelector(".message-bubble");
+    if (!bubble) {
+        return;
+    }
+
+    bubble.classList.add("has-feedback");
+
+    const feedbackRow = document.createElement("div");
+    feedbackRow.className = "feedback-row";
+    feedbackRow.setAttribute("data-question-id", String(questionId));
+
+    const label = document.createElement("span");
+    label.className = "feedback-label";
+    label.textContent = "Was this response helpful?";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "feedback-btn";
+    upBtn.type = "button";
+    upBtn.title = "Thumbs up";
+    upBtn.innerHTML = '<i class="fa-solid fa-thumbs-up"></i>';
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "feedback-btn";
+    downBtn.type = "button";
+    downBtn.title = "Thumbs down";
+    downBtn.innerHTML = '<i class="fa-solid fa-thumbs-down"></i>';
+
+    const status = document.createElement("span");
+    status.className = "feedback-status";
+
+    const applySubmittedState = (score) => {
+        upBtn.classList.toggle("active", score > 0);
+        downBtn.classList.toggle("active", score < 0);
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+    };
+
+    const existingScore = submittedFeedback.get(String(questionId));
+    if (existingScore === 1 || existingScore === -1) {
+        applySubmittedState(existingScore);
+        status.textContent = "Thanks for your feedback.";
+    }
+
+    upBtn.addEventListener("click", () => {
+        submitFeedback(questionId, 1, upBtn, downBtn, status);
+    });
+    downBtn.addEventListener("click", () => {
+        submitFeedback(questionId, -1, upBtn, downBtn, status);
+    });
+
+    feedbackRow.appendChild(label);
+    feedbackRow.appendChild(upBtn);
+    feedbackRow.appendChild(downBtn);
+    feedbackRow.appendChild(status);
+
+    bubble.appendChild(feedbackRow);
+}
+
+async function submitFeedback(questionId, score, upBtn, downBtn, statusEl) {
+    const questionKey = String(questionId);
+    if (submittedFeedback.has(questionKey)) {
+        return;
+    }
+
+    upBtn.disabled = true;
+    downBtn.disabled = true;
+    statusEl.textContent = "Sending...";
+
+    try {
+        const response = await fetch(`${API_BASE}/feedback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                score,
+                question_id: Number(questionId),
+                text: `question_id=${questionId}; sentiment=${score > 0 ? "thumbs_up" : "thumbs_down"}`,
+                user_id: USER_ID,
+                session_id: currentSessionId || "",
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Feedback request failed");
+        }
+
+        submittedFeedback.set(questionKey, score);
+        upBtn.classList.toggle("active", score > 0);
+        downBtn.classList.toggle("active", score < 0);
+        statusEl.textContent = "Thanks for your feedback.";
+    } catch (err) {
+        console.error("Error submitting feedback:", err);
+        upBtn.disabled = false;
+        downBtn.disabled = false;
+        statusEl.textContent = "Could not save feedback.";
+    }
 }
 
 // Append tool execution badge

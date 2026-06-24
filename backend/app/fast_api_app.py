@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import json
+from collections import Counter
 from datetime import datetime
 from typing import Any
 
@@ -20,6 +21,7 @@ import google.auth
 from fastapi import FastAPI, Depends
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.app_utils.telemetry import setup_telemetry
@@ -29,7 +31,8 @@ from app.tools import (
     index_pgvector_documents,
     is_question_on_topic,
 )
-from app.database import get_db, Question, UserSession, init_db
+from app.database import Feedback as FeedbackRecord
+from app.database import AgentRun, Question, UserSession, get_db, init_db
 from app.orchestration import MultiAgentOrchestrator
 
 
@@ -151,7 +154,7 @@ def startup_index_pgvector() -> None:
 
 
 @app.post("/feedback")
-def collect_feedback(feedback: Feedback) -> dict[str, str]:
+def collect_feedback(feedback: Feedback, db: Session = Depends(get_db)) -> dict[str, str]:
     """Collect and log feedback.
 
     Args:
@@ -160,8 +163,183 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     Returns:
         Success message
     """
+    if feedback.question_id is None:
+        return {"status": "error", "message": "question_id is required"}
+
+    question = db.query(Question).filter(Question.id == int(feedback.question_id)).first()
+    if question is None:
+        return {"status": "error", "message": "question_id not found"}
+
+    feedback_record = FeedbackRecord(
+        question_id=int(feedback.question_id),
+        rating=int(feedback.score),
+        comments=feedback.text or "",
+    )
+    db.add(feedback_record)
+    db.commit()
+
     logger.log_struct(feedback.model_dump(), severity="INFO")
     return {"status": "success"}
+
+
+@app.get("/admin/overview")
+def admin_overview(limit: int = 10, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Return analytics used by the admin dashboard."""
+    safe_limit = max(1, min(50, int(limit)))
+
+    total_questions = int(db.query(func.count(Question.id)).scalar() or 0)
+    avg_latency_ms = float(
+        db.query(func.avg(Question.latency_ms))
+        .filter(Question.latency_ms.isnot(None))
+        .scalar()
+        or 0.0
+    )
+
+    total_feedback = int(db.query(func.count(FeedbackRecord.id)).scalar() or 0)
+    positive_feedback = int(
+        db.query(func.count(FeedbackRecord.id))
+        .filter(FeedbackRecord.rating > 0)
+        .scalar()
+        or 0
+    )
+
+    feedback_submission_rate = (
+        (total_feedback / total_questions) if total_questions > 0 else 0.0
+    )
+    positive_feedback_rate = (
+        (positive_feedback / total_feedback) if total_feedback > 0 else 0.0
+    )
+
+    top_questions_rows = (
+        db.query(
+            Question.question,
+            func.count(Question.id).label("count"),
+            func.max(Question.created_at).label("last_seen_at"),
+        )
+        .group_by(Question.question)
+        .order_by(func.count(Question.id).desc(), func.max(Question.created_at).desc())
+        .limit(safe_limit)
+        .all()
+    )
+    top_questions = [
+        {
+            "question": row.question,
+            "count": int(row.count or 0),
+            "last_seen_at": row.last_seen_at.isoformat() if row.last_seen_at else None,
+        }
+        for row in top_questions_rows
+    ]
+
+    top_intents_rows = (
+        db.query(Question.intent, func.count(Question.id).label("count"))
+        .filter(Question.intent.isnot(None), Question.intent != "unknown")
+        .group_by(Question.intent)
+        .order_by(func.count(Question.id).desc())
+        .limit(safe_limit)
+        .all()
+    )
+    top_intents = [
+        {"intent": row.intent, "count": int(row.count or 0)}
+        for row in top_intents_rows
+    ]
+
+    skill_keywords = (
+        "python",
+        "llm",
+        "rag",
+        "nlp",
+        "agent",
+        "fastapi",
+        "tensorflow",
+        "scikit",
+        "openai",
+        "azure",
+    )
+    skill_counter: Counter[str] = Counter()
+    skill_questions = (
+        db.query(Question.question)
+        .order_by(Question.created_at.desc())
+        .limit(1000)
+        .all()
+    )
+    for row in skill_questions:
+        question_text = (row.question or "").lower()
+        for keyword in skill_keywords:
+            if keyword in question_text:
+                skill_counter[keyword] += 1
+
+    top_skills = [
+        {"skill": skill, "count": count}
+        for skill, count in skill_counter.most_common(safe_limit)
+    ]
+
+    error_question_ids = {
+        int(row.question_id)
+        for row in (
+            db.query(AgentRun.question_id)
+            .filter(AgentRun.status == "error")
+            .distinct()
+            .all()
+        )
+        if row.question_id is not None
+    }
+
+    recent_candidates = (
+        db.query(Question)
+        .order_by(Question.created_at.desc())
+        .limit(250)
+        .all()
+    )
+    recent_failed_or_rejected: list[dict[str, Any]] = []
+    rejection_markers = (
+        "i'm designed to answer questions about kate",
+        "ask me about her skills, projects, or career background",
+    )
+
+    for question in recent_candidates:
+        reasons: list[str] = []
+        answer_text = (question.answer or "").lower()
+
+        if question.id in error_question_ids:
+            reasons.append("agent_error")
+        if not question.answer:
+            reasons.append("no_answer")
+        if any(marker in answer_text for marker in rejection_markers):
+            reasons.append("rejected_off_topic")
+
+        if not reasons:
+            continue
+
+        recent_failed_or_rejected.append(
+            {
+                "question_id": question.id,
+                "session_id": question.session_id,
+                "question": question.question,
+                "intent": question.intent,
+                "latency_ms": question.latency_ms,
+                "created_at": question.created_at.isoformat() if question.created_at else None,
+                "reasons": reasons,
+            }
+        )
+
+        if len(recent_failed_or_rejected) >= safe_limit:
+            break
+
+    return {
+        "generated_at": datetime.utcnow().isoformat(),
+        "summary": {
+            "total_questions": total_questions,
+            "avg_latency_ms": round(avg_latency_ms, 2),
+            "total_feedback": total_feedback,
+            "positive_feedback": positive_feedback,
+            "feedback_submission_rate": round(feedback_submission_rate, 4),
+            "positive_feedback_rate": round(positive_feedback_rate, 4),
+        },
+        "top_questions": top_questions,
+        "top_intents": top_intents,
+        "top_skills": top_skills,
+        "recent_failed_or_rejected": recent_failed_or_rejected,
+    }
 
 
 @app.get("/health")

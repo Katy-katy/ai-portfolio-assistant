@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Assistant Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="admin-shell">
+        <header class="admin-header">
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p>Portfolio assistant usage and quality analytics</p>
+            </div>
+            <div class="admin-actions">
+                <button id="refresh-btn" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    Refresh
+                </button>
+                <a class="btn btn-secondary" href="../index.html">
+                    <i class="fa-solid fa-comments"></i>
+                    Back To Chat
+                </a>
+            </div>
+        </header>
+
+        <section class="kpi-grid" id="kpi-grid">
+            <article class="kpi-card">
+                <span class="kpi-label">Total Questions</span>
+                <strong id="kpi-total-questions">-</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Average Latency</span>
+                <strong id="kpi-avg-latency">-</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Feedback Submission Rate</span>
+                <strong id="kpi-feedback-submission">-</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Positive Feedback Rate</span>
+                <strong id="kpi-feedback-positive">-</strong>
+            </article>
+        </section>
+
+        <section class="panel-grid">
+            <article class="panel">
+                <h2>Top Questions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Question</th><th>Count</th></tr>
+                        </thead>
+                        <tbody id="top-questions-body"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>Most Requested Intents</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Intent</th><th>Count</th></tr>
+                        </thead>
+                        <tbody id="top-intents-body"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>Most Requested Skills</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Skill</th><th>Count</th></tr>
+                        </thead>
+                        <tbody id="top-skills-body"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel panel-wide">
+                <h2>Recent Failed Or Rejected Questions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Time</th><th>Question</th><th>Intent</th><th>Latency</th><th>Reasons</th></tr>
+                        </thead>
+                        <tbody id="failed-questions-body"></tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

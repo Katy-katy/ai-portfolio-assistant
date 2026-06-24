@@ -28,6 +28,7 @@ class Feedback(BaseModel):
 
     score: int | float
     text: str | None = ""
+    question_id: int | None = None
     log_type: Literal["feedback"] = "feedback"
     service_name: Literal["backend"] = "backend"
     user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))

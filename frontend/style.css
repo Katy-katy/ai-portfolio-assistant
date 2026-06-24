@@ -515,6 +515,10 @@ h1, h2, h3, .profile-info h2 {
     border: 1px solid var(--border-color);
 }
 
+.message-row.agent .message-bubble.has-feedback {
+    padding-bottom: 56px;
+}
+
 /* Markdown styling inside bubbles */
 .message-bubble p {
     margin-bottom: 12px;
@@ -564,6 +568,68 @@ h1, h2, h3, .profile-info h2 {
 .message-bubble h3 {
     font-size: 16px;
     margin: 16px 0 8px 0;
+}
+
+.feedback-row {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
+    flex-wrap: wrap;
+}
+
+.feedback-label {
+    font-size: 12px;
+    color: #2dd4bf;
+    margin-right: 4px;
+}
+
+.message-row.agent .message-bubble .feedback-row .feedback-label {
+    color: #2dd4bf !important;
+}
+
+:root[data-theme="light"] .message-row.agent .message-bubble .feedback-row .feedback-label {
+    color: #0ea5e9 !important;
+}
+
+.feedback-btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.feedback-btn:hover:not(:disabled) {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    transform: translateY(-1px);
+}
+
+.feedback-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: var(--accent-primary);
+}
+
+.feedback-btn:disabled {
+    cursor: default;
+    opacity: 0.85;
+}
+
+.feedback-status {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 /* ==========================================================================
