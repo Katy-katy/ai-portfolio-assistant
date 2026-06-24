@@ -44,8 +44,9 @@ export RAG_EMBEDDING_MODEL="text-embedding-004"
 ```
 
 Notes:
-- On first run, the app creates the vector table/index and ingests markdown chunks.
+- On startup (when RAG_BACKEND=pgvector and RAG_AUTO_INGEST=true), the app syncs all knowledge chunks into the vector table.
 - Category-filtered search is applied per specialist agent (skills/resume/projects).
+- Query-time retrieval reads from the vector DB only (no indexing in request path).
 - If pgvector config is missing or unavailable, retrieval falls back to local mode.
 
 Validate pgvector setup end-to-end:

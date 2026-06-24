@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
-from app.tools import is_question_on_topic
+from app.tools import is_question_on_topic, index_pgvector_documents
 from app.database import get_db, Question, UserSession, init_db
 from app.orchestration import MultiAgentOrchestrator
 
@@ -79,6 +79,37 @@ app: FastAPI = get_fast_api_app(
 )
 app.title = "backend"
 app.description = "API for interacting with the Agent backend"
+
+
+@app.on_event("startup")
+def startup_index_pgvector() -> None:
+    """Index knowledge documents into pgvector once at application startup."""
+    rag_backend = os.getenv("RAG_BACKEND", "local").strip().lower()
+    should_index = os.getenv("RAG_AUTO_INGEST", "true").strip().lower() == "true"
+
+    if rag_backend != "pgvector" or not should_index:
+        return
+
+    try:
+        result = index_pgvector_documents()
+        logger.log_struct(
+            {
+                "event": "pgvector_startup_index",
+                "status": result.get("status"),
+                "table": result.get("table"),
+                "total_chunks": result.get("total_chunks"),
+            },
+            severity="INFO",
+        )
+    except Exception as e:
+        logger.log_struct(
+            {
+                "event": "pgvector_startup_index",
+                "status": "error",
+                "error": str(e),
+            },
+            severity="ERROR",
+        )
 
 
 @app.post("/feedback")

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import psycopg
 from google.genai import Client
+from pypdf import PdfReader
 
 # Resolve the project root directory
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -101,6 +102,32 @@ def _split_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
     return chunks
 
 
+def _read_source_content(source_path: Path) -> str:
+    """Read knowledge source content from markdown or PDF files."""
+    if source_path.suffix.lower() == ".pdf":
+        reader = PdfReader(str(source_path))
+        pages: list[str] = []
+        for page in reader.pages:
+            text = (page.extract_text() or "").strip()
+            if text:
+                pages.append(text)
+        return "\n\n".join(pages)
+
+    return source_path.read_text(encoding="utf-8")
+
+
+def _categorize_profile_asset(source_path: Path) -> str:
+    """Infer retrieval category for top-level knowledge PDF assets."""
+    name = source_path.stem.lower()
+    if "skill" in name:
+        return "skills"
+    if "profile" in name or "linkedin" in name:
+        return "skills"
+    if "project" in name:
+        return "projects"
+    return "resume"
+
+
 def _to_vector_literal(values: list[float]) -> str:
     """Convert embedding values into pgvector literal format."""
     return "[" + ",".join(f"{v:.8f}" for v in values) + "]"
@@ -113,7 +140,7 @@ def _chunk_rows() -> list[dict]:
         if not source_path.exists():
             continue
         try:
-            content = source_path.read_text(encoding="utf-8")
+            content = _read_source_content(source_path)
         except Exception:
             continue
 
@@ -214,11 +241,11 @@ def _sync_pgvector_index(conn: psycopg.Connection, table: str, dim: int) -> None
     _ensure_pgvector_schema(conn, table, dim)
     rows = _chunk_rows()
 
-    existing: dict[tuple[str, int], str] = {}
+    existing: dict[tuple[str, int], tuple[str, str]] = {}
     with conn.cursor() as cur:
-        cur.execute(f"SELECT source, chunk_index, content_hash FROM {table}")
-        for source, chunk_index, content_hash in cur.fetchall():
-            existing[(source, int(chunk_index))] = content_hash
+        cur.execute(f"SELECT source, chunk_index, content_hash, category FROM {table}")
+        for source, chunk_index, content_hash, category in cur.fetchall():
+            existing[(source, int(chunk_index))] = (content_hash, category)
 
     active_keys: set[tuple[str, int]] = set()
     with conn.cursor() as cur:
@@ -226,7 +253,8 @@ def _sync_pgvector_index(conn: psycopg.Connection, table: str, dim: int) -> None
             key = (row["source"], row["chunk_index"])
             active_keys.add(key)
 
-            if existing.get(key) == row["content_hash"]:
+            existing_item = existing.get(key)
+            if existing_item and existing_item[0] == row["content_hash"] and existing_item[1] == row["category"]:
                 continue
 
             embedding = _embed_text(row["text"])
@@ -280,6 +308,41 @@ def _sync_pgvector_index(conn: psycopg.Connection, table: str, dim: int) -> None
     conn.commit()
 
 
+def index_pgvector_documents(force: bool = False) -> dict:
+    """Synchronize knowledge documents into pgvector index.
+
+    Intended to run during app startup so request-time retrieval remains read-only.
+
+    Args:
+        force: Reserved for future full-reindex behavior.
+
+    Returns:
+        Dict with sync status and basic counts.
+    """
+    dsn = os.getenv("PGVECTOR_DSN")
+    if not dsn:
+        return {
+            "status": "skipped",
+            "reason": "PGVECTOR_DSN is not set",
+        }
+
+    table = os.getenv("PGVECTOR_TABLE", "knowledge_chunks")
+    dim = int(os.getenv("PGVECTOR_EMBEDDING_DIM", "768"))
+
+    with psycopg.connect(dsn) as conn:
+        _sync_pgvector_index(conn, table, dim)
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT count(*) FROM {table}")
+            total_chunks = int(cur.fetchone()[0])
+
+    return {
+        "status": "success",
+        "table": table,
+        "total_chunks": total_chunks,
+        "force": force,
+    }
+
+
 def _knowledge_sources() -> list[tuple[str, Path]]:
     """Return all source files and retrieval categories."""
     knowledge_dir = Path(BASE_DIR) / "knowledge"
@@ -294,6 +357,11 @@ def _knowledge_sources() -> list[tuple[str, Path]]:
     if projects_dir.exists():
         for project_file in sorted(projects_dir.glob("*.md")):
             sources.append(("projects", project_file))
+
+    # Optional profile assets (for example, LinkedIn profile exports) can be
+    # dropped into knowledge/ as PDFs and will be indexed automatically.
+    for profile_asset in sorted(knowledge_dir.glob("*.pdf")):
+        sources.append((_categorize_profile_asset(profile_asset), profile_asset))
 
     return sources
 
@@ -357,14 +425,11 @@ def _retrieve_pgvector(query: str, category: str, top_k: int) -> list[dict]:
 
     table = os.getenv("PGVECTOR_TABLE", "knowledge_chunks")
     dim = int(os.getenv("PGVECTOR_EMBEDDING_DIM", "768"))
-    auto_ingest = os.getenv("RAG_AUTO_INGEST", "true").strip().lower() == "true"
 
     try:
         with psycopg.connect(dsn) as conn:
-            if auto_ingest:
-                _sync_pgvector_index(conn, table, dim)
-            else:
-                _ensure_pgvector_schema(conn, table, dim)
+            # Query-time retrieval is read-only. Index sync should happen during
+            # startup via index_pgvector_documents().
 
             query_embedding = _embed_text(query)
             if len(query_embedding) != dim:
