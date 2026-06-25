@@ -56,6 +56,8 @@ You can also use features from the [ADK](https://adk.dev/) CLI with `uv run adk`
 | `agents-cli lint`    | Run code quality checks                                                               |
 | `agents-cli eval`    | Evaluate agent behavior (generate, grade, analyze, and more — see `agents-cli eval --help`) |
 | `uv run pytest tests/unit tests/integration` | Run unit and integration tests                                                        |
+| `uv run python scripts/run_evals.py` | Run 30-question golden eval suite and persist per-case results to `eval_results` |
+| `bash scripts/run_evals_after_changes.sh` | Run evals only when `app/agent.py`, `app/multi_agent.py`, or `knowledge/**` changed |
 
 ## 🛠️ Project Management
 

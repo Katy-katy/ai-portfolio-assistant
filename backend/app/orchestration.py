@@ -429,6 +429,12 @@ Now synthesize these outputs into a cohesive, professional final answer."""
                 agent_name=run["agent_name"],
                 cache_request_stats=cache_request_stats,
             )
+            latency_ms = int(
+                max(
+                    0.0,
+                    (run["end_time"] - run["start_time"]).total_seconds() * 1000,
+                )
+            )
             agent_run = AgentRun(
                 question_id=question_id,
                 agent_name=run["agent_name"],
@@ -438,6 +444,7 @@ Now synthesize these outputs into a cohesive, professional final answer."""
                 output=run.get("output"),
                 tools_called=run.get("tools_called"),
                 tokens_used=run.get("tokens_used"),
+                latency_ms=latency_ms,
                 cache_hits=cache_stats.get("hits"),
                 cache_misses=cache_stats.get("misses"),
                 cache_expired=cache_stats.get("expired"),

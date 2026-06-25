@@ -1,0 +1,214 @@
+{
+  "cases": [
+    {
+      "id": "q01_skills_overview",
+      "question": "What are Kate's core AI and NLP skills?",
+      "expected_topics": ["ai", "nlp", "skills"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q02_resume_summary",
+      "question": "Can you summarize Kate's professional background?",
+      "expected_topics": ["experience", "career", "background"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q03_linkedin_projects",
+      "question": "Which projects did Kate work on at LinkedIn?",
+      "expected_topics": ["linkedin", "projects", "experience"],
+      "expected_project_references": ["lamabot", "ticket classification", "babyyoda"],
+      "should_refuse": false
+    },
+    {
+      "id": "q04_lamabot_deepdive",
+      "question": "Tell me more about Lamabot and what problem it solved.",
+      "expected_topics": ["project", "lamabot", "impact"],
+      "expected_project_references": ["lamabot"],
+      "should_refuse": false
+    },
+    {
+      "id": "q05_ticketclassification",
+      "question": "What was Kate's Ticket Classification project about?",
+      "expected_topics": ["project", "classification", "ml"],
+      "expected_project_references": ["ticket classification"],
+      "should_refuse": false
+    },
+    {
+      "id": "q06_babyyoda",
+      "question": "Describe the Babyyoda project and technologies used.",
+      "expected_topics": ["project", "technologies", "ai"],
+      "expected_project_references": ["babyyoda"],
+      "should_refuse": false
+    },
+    {
+      "id": "q07_rag",
+      "question": "What is Kate's experience with RAG systems?",
+      "expected_topics": ["rag", "retrieval", "llm"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q08_llm_agents",
+      "question": "How has Kate built LLM agents in production?",
+      "expected_topics": ["llm", "agents", "production"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q09_cloud_stack",
+      "question": "What cloud and infrastructure tools has Kate used?",
+      "expected_topics": ["cloud", "infrastructure", "azure"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q10_python_stack",
+      "question": "Which Python libraries does Kate use most often?",
+      "expected_topics": ["python", "libraries", "machine learning"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q11_education",
+      "question": "Can you summarize Kate's education and certifications?",
+      "expected_topics": ["education", "certifications", "degree"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q12_publications",
+      "question": "Has Kate published any papers in ML?",
+      "expected_topics": ["publication", "paper", "machine learning"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q13_observability",
+      "question": "How does Kate handle monitoring and observability for AI systems?",
+      "expected_topics": ["observability", "monitoring", "production"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q14_intent_classification",
+      "question": "What experience does Kate have with intent classification?",
+      "expected_topics": ["intent classification", "nlp", "model"],
+      "expected_project_references": ["ticket classification"],
+      "should_refuse": false
+    },
+    {
+      "id": "q15_vector_search",
+      "question": "What has Kate done with vector search and embeddings?",
+      "expected_topics": ["vector search", "embeddings", "retrieval"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q16_data_pipeline",
+      "question": "Tell me about her data and ML pipeline experience.",
+      "expected_topics": ["data", "pipeline", "ml lifecycle"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q17_leadership",
+      "question": "What leadership responsibilities has Kate had in AI projects?",
+      "expected_topics": ["leadership", "projects", "ownership"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q18_role_fit",
+      "question": "Why would Kate be a strong fit for a Senior Applied AI role?",
+      "expected_topics": ["senior", "applied ai", "experience"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q19_compare_projects",
+      "question": "Compare Lamabot and Ticket Classification in terms of business impact.",
+      "expected_topics": ["impact", "comparison", "project"],
+      "expected_project_references": ["lamabot", "ticket classification"],
+      "should_refuse": false
+    },
+    {
+      "id": "q20_project_list",
+      "question": "Can you list Kate's key AI projects?",
+      "expected_topics": ["projects", "ai", "portfolio"],
+      "expected_project_references": ["lamabot", "babyyoda", "ticket classification"],
+      "should_refuse": false
+    },
+    {
+      "id": "q21_weather_refusal",
+      "question": "What is the weather in San Francisco today?",
+      "expected_topics": ["off-topic"],
+      "expected_project_references": [],
+      "should_refuse": true
+    },
+    {
+      "id": "q22_politics_refusal",
+      "question": "Who will win the next US election?",
+      "expected_topics": ["off-topic"],
+      "expected_project_references": [],
+      "should_refuse": true
+    },
+    {
+      "id": "q23_sports_refusal",
+      "question": "Who won last night's NBA game?",
+      "expected_topics": ["off-topic"],
+      "expected_project_references": [],
+      "should_refuse": true
+    },
+    {
+      "id": "q24_personal_life_refusal",
+      "question": "Where does Kate live and what are her hobbies?",
+      "expected_topics": ["off-topic"],
+      "expected_project_references": [],
+      "should_refuse": true
+    },
+    {
+      "id": "q25_generic_ai_refusal",
+      "question": "Can you explain how transformers work in deep learning?",
+      "expected_topics": ["off-topic"],
+      "expected_project_references": [],
+      "should_refuse": true
+    },
+    {
+      "id": "q26_hallucination_guard",
+      "question": "Did Kate build robotics systems at SpaceX?",
+      "expected_topics": ["unknown info", "grounding"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q27_mix_resume_skills",
+      "question": "Give me a concise summary of her background and strongest AI skills.",
+      "expected_topics": ["background", "skills", "ai"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q28_project_tech_stack",
+      "question": "Which technologies were used across Babyyoda and Lamabot?",
+      "expected_topics": ["technologies", "projects", "ai"],
+      "expected_project_references": ["babyyoda", "lamabot"],
+      "should_refuse": false
+    },
+    {
+      "id": "q29_certifications",
+      "question": "What certifications does Kate have in AI or deep learning?",
+      "expected_topics": ["certifications", "ai", "deep learning"],
+      "expected_project_references": [],
+      "should_refuse": false
+    },
+    {
+      "id": "q30_followup_projects",
+      "question": "If I want to discuss collaboration, which of Kate's projects should I start with?",
+      "expected_topics": ["projects", "collaboration", "impact"],
+      "expected_project_references": ["lamabot", "ticket classification", "babyyoda"],
+      "should_refuse": false
+    }
+  ]
+}

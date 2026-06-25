@@ -196,3 +196,51 @@ When chatting with the assistant, you can ask questions like:
 - Questions are stored in database/portfolio.db in table questions.
 - Per-agent traces are stored in table agent_runs.
 - Multi-agent runs populate question metadata fields intent, latency_ms, and tokens_used.
+
+## Golden Evals
+
+The project includes a golden eval suite with 30 questions and expected outcomes.
+
+- Dataset: `backend/tests/eval/datasets/eval_questions.json`
+- Runner: `backend/scripts/run_evals.py`
+- Results table: `eval_results` (stored in your configured DB, including Postgres)
+
+Each eval case defines:
+- question text
+- expected topics
+- expected project references
+- whether the assistant should refuse (off-topic)
+
+Scoring includes:
+- topic coverage
+- project reference coverage
+- refusal correctness
+- pass/fail per case
+
+Run all evals:
+
+```bash
+cd backend
+uv run python scripts/run_evals.py
+```
+
+Run a quick sample (first 5):
+
+```bash
+cd backend
+uv run python scripts/run_evals.py --limit 5
+```
+
+Run automatically after prompt/knowledge changes:
+
+```bash
+cd backend
+bash scripts/run_evals_after_changes.sh
+```
+
+This helper checks changes in:
+- `app/agent.py`
+- `app/multi_agent.py`
+- `knowledge/**`
+
+If changes are detected, it executes the golden eval runner.

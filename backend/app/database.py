@@ -82,6 +82,7 @@ class AgentRun(Base):
     output = Column(Text, nullable=True)
     tools_called = Column(String, nullable=True)
     tokens_used = Column(Integer, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
     cache_hits = Column(Integer, nullable=True)
     cache_misses = Column(Integer, nullable=True)
     cache_expired = Column(Integer, nullable=True)
@@ -97,6 +98,25 @@ class Feedback(Base):
     question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
     rating = Column(Integer, nullable=False)
     comments = Column(Text, nullable=True)
+
+
+class EvalResult(Base):
+    __tablename__ = "eval_results"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    run_id = Column(String, index=True, nullable=False)
+    eval_case_id = Column(String, nullable=False)
+    question = Column(Text, nullable=False)
+    expected_topics = Column(Text, nullable=False)
+    expected_projects = Column(Text, nullable=False)
+    should_refuse = Column(Integer, nullable=False)
+    answer = Column(Text, nullable=True)
+    topic_coverage = Column(Float, nullable=False, default=0.0)
+    project_coverage = Column(Float, nullable=False, default=0.0)
+    refusal_correct = Column(Integer, nullable=False, default=0)
+    passed = Column(Integer, nullable=False, default=0)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 def _ensure_column_if_missing(table_name: str, column_name: str, column_sql: str) -> None:
@@ -123,6 +143,7 @@ def _ensure_cache_metrics_schema() -> None:
             ("cache_by_category", "TEXT"),
         ],
         "agent_runs": [
+            ("latency_ms", "INTEGER"),
             ("cache_hits", "INTEGER"),
             ("cache_misses", "INTEGER"),
             ("cache_expired", "INTEGER"),
