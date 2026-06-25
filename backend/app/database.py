@@ -109,11 +109,22 @@ class EvalResult(Base):
     question = Column(Text, nullable=False)
     expected_topics = Column(Text, nullable=False)
     expected_projects = Column(Text, nullable=False)
+    expected_key_points = Column(Text, nullable=True)
+    forbidden_claims = Column(Text, nullable=True)
     should_refuse = Column(Integer, nullable=False)
     answer = Column(Text, nullable=True)
     topic_coverage = Column(Float, nullable=False, default=0.0)
     project_coverage = Column(Float, nullable=False, default=0.0)
     refusal_correct = Column(Integer, nullable=False, default=0)
+    semantic_relevance = Column(Float, nullable=True)
+    factual_grounding = Column(Float, nullable=True)
+    completeness = Column(Float, nullable=True)
+    clarity = Column(Float, nullable=True)
+    refusal_appropriateness = Column(Float, nullable=True)
+    overall_semantic_score = Column(Float, nullable=True)
+    semantic_pass = Column(Integer, nullable=True)
+    judge_model = Column(String, nullable=True)
+    judge_notes = Column(Text, nullable=True)
     passed = Column(Integer, nullable=False, default=0)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -162,9 +173,37 @@ def _ensure_cache_metrics_schema() -> None:
         for column_name, column_sql in columns:
             _ensure_column_if_missing(table_name, column_name, column_sql)
 
+
+def _ensure_eval_semantic_schema() -> None:
+    """Ensure semantic eval columns exist for existing installations."""
+    additions = {
+        "eval_results": [
+            ("expected_key_points", "TEXT"),
+            ("forbidden_claims", "TEXT"),
+            ("semantic_relevance", "FLOAT"),
+            ("factual_grounding", "FLOAT"),
+            ("completeness", "FLOAT"),
+            ("clarity", "FLOAT"),
+            ("refusal_appropriateness", "FLOAT"),
+            ("overall_semantic_score", "FLOAT"),
+            ("semantic_pass", "INTEGER"),
+            ("judge_model", "TEXT"),
+            ("judge_notes", "TEXT"),
+        ]
+    }
+
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    for table_name, columns in additions.items():
+        if table_name not in tables:
+            continue
+        for column_name, column_sql in columns:
+            _ensure_column_if_missing(table_name, column_name, column_sql)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
     _ensure_cache_metrics_schema()
+    _ensure_eval_semantic_schema()
 
 def get_db():
     db = SessionLocal()

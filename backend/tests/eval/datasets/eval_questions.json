@@ -5,6 +5,15 @@
       "question": "What are Kate's core AI and NLP skills?",
       "expected_topics": ["ai", "nlp", "skills"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Kate has AI and NLP expertise",
+        "Mentions LLM or generative AI capabilities",
+        "Mentions frameworks/tools relevant to ML/NLP"
+      ],
+      "forbidden_claims": [
+        "Unrelated personal details",
+        "Claims not present in profile context"
+      ],
       "should_refuse": false
     },
     {
@@ -12,6 +21,15 @@
       "question": "Can you summarize Kate's professional background?",
       "expected_topics": ["experience", "career", "background"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Summarizes professional background",
+        "Mentions career or experience highlights",
+        "Keeps answer concise and structured"
+      ],
+      "forbidden_claims": [
+        "Jobs not in profile",
+        "Unverified timeline details"
+      ],
       "should_refuse": false
     },
     {
@@ -19,6 +37,15 @@
       "question": "Which projects did Kate work on at LinkedIn?",
       "expected_topics": ["linkedin", "projects", "experience"],
       "expected_project_references": ["lamabot", "ticket classification", "babyyoda"],
+      "expected_key_points": [
+        "Response ties projects to LinkedIn context",
+        "Includes at least two concrete project names",
+        "Summarizes project impact or purpose"
+      ],
+      "forbidden_claims": [
+        "Projects not in knowledge base",
+        "Fabricated employers"
+      ],
       "should_refuse": false
     },
     {
@@ -26,6 +53,15 @@
       "question": "Tell me more about Lamabot and what problem it solved.",
       "expected_topics": ["project", "lamabot", "impact"],
       "expected_project_references": ["lamabot"],
+      "expected_key_points": [
+        "Explains Lamabot objective",
+        "Describes problem solved",
+        "Mentions outcome, impact, or business value"
+      ],
+      "forbidden_claims": [
+        "Invented product metrics",
+        "Irrelevant project details"
+      ],
       "should_refuse": false
     },
     {
@@ -33,6 +69,15 @@
       "question": "What was Kate's Ticket Classification project about?",
       "expected_topics": ["project", "classification", "ml"],
       "expected_project_references": ["ticket classification"],
+      "expected_key_points": [
+        "Explains project goal",
+        "Mentions classification or NLP/ML framing",
+        "Describes outcome or practical use"
+      ],
+      "forbidden_claims": [
+        "Fabricated dataset metrics",
+        "Unrelated project details"
+      ],
       "should_refuse": false
     },
     {
@@ -40,6 +85,15 @@
       "question": "Describe the Babyyoda project and technologies used.",
       "expected_topics": ["project", "technologies", "ai"],
       "expected_project_references": ["babyyoda"],
+      "expected_key_points": [
+        "Mentions Babyyoda project",
+        "Describes technologies/tools used",
+        "Connects project to AI/NLP context"
+      ],
+      "forbidden_claims": [
+        "Tools not present in project context",
+        "Confusing Babyyoda with another project"
+      ],
       "should_refuse": false
     },
     {
@@ -47,6 +101,15 @@
       "question": "What is Kate's experience with RAG systems?",
       "expected_topics": ["rag", "retrieval", "llm"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions retrieval-augmented generation experience",
+        "Links RAG to LLM applications",
+        "Describes practical implementation context"
+      ],
+      "forbidden_claims": [
+        "Claims of unrelated domains",
+        "Made-up production deployments"
+      ],
       "should_refuse": false
     },
     {
@@ -54,6 +117,15 @@
       "question": "How has Kate built LLM agents in production?",
       "expected_topics": ["llm", "agents", "production"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions production-oriented agent experience",
+        "References LLM workflows or orchestration",
+        "Touches reliability or operational concerns"
+      ],
+      "forbidden_claims": [
+        "Invented company deployments",
+        "Unsupported scale claims"
+      ],
       "should_refuse": false
     },
     {
@@ -61,6 +133,15 @@
       "question": "What cloud and infrastructure tools has Kate used?",
       "expected_topics": ["cloud", "infrastructure", "azure"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions cloud platform experience",
+        "Includes infrastructure or deployment tooling",
+        "Includes Azure-related references when relevant"
+      ],
+      "forbidden_claims": [
+        "Cloud providers never mentioned in profile",
+        "Unsupported certifications"
+      ],
       "should_refuse": false
     },
     {
@@ -68,6 +149,15 @@
       "question": "Which Python libraries does Kate use most often?",
       "expected_topics": ["python", "libraries", "machine learning"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions Python usage",
+        "Lists relevant libraries/frameworks",
+        "Connects libraries to ML/NLP work"
+      ],
+      "forbidden_claims": [
+        "Libraries absent from profile",
+        "Language claims unrelated to question"
+      ],
       "should_refuse": false
     },
     {
@@ -75,6 +165,15 @@
       "question": "Can you summarize Kate's education and certifications?",
       "expected_topics": ["education", "certifications", "degree"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Includes education summary",
+        "Includes relevant certifications",
+        "Stays focused on professional credentials"
+      ],
+      "forbidden_claims": [
+        "Unverified university degrees",
+        "Certification names not in knowledge base"
+      ],
       "should_refuse": false
     },
     {
@@ -82,6 +181,15 @@
       "question": "Has Kate published any papers in ML?",
       "expected_topics": ["publication", "paper", "machine learning"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Answers whether publications exist",
+        "Mentions publication context or title if available",
+        "Avoids overstating publication record"
+      ],
+      "forbidden_claims": [
+        "Fake paper titles",
+        "Inflated publication counts"
+      ],
       "should_refuse": false
     },
     {
@@ -89,6 +197,15 @@
       "question": "How does Kate handle monitoring and observability for AI systems?",
       "expected_topics": ["observability", "monitoring", "production"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions monitoring/observability practices",
+        "Connects to production AI reliability",
+        "References concrete tooling or workflow where available"
+      ],
+      "forbidden_claims": [
+        "Made-up monitoring platforms",
+        "Unverified SRE ownership claims"
+      ],
       "should_refuse": false
     },
     {
@@ -96,6 +213,15 @@
       "question": "What experience does Kate have with intent classification?",
       "expected_topics": ["intent classification", "nlp", "model"],
       "expected_project_references": ["ticket classification"],
+      "expected_key_points": [
+        "Mentions intent classification experience",
+        "Ties work to NLP/model context",
+        "References related project work"
+      ],
+      "forbidden_claims": [
+        "Unrelated classification domains",
+        "Unsupported benchmark claims"
+      ],
       "should_refuse": false
     },
     {
@@ -103,6 +229,15 @@
       "question": "What has Kate done with vector search and embeddings?",
       "expected_topics": ["vector search", "embeddings", "retrieval"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions vector search and/or embeddings",
+        "Connects to retrieval or RAG usage",
+        "Describes practical application context"
+      ],
+      "forbidden_claims": [
+        "Embedding models not used in profile context",
+        "Invented production scale numbers"
+      ],
       "should_refuse": false
     },
     {
@@ -110,6 +245,15 @@
       "question": "Tell me about her data and ML pipeline experience.",
       "expected_topics": ["data", "pipeline", "ml lifecycle"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions data or ML lifecycle experience",
+        "Describes pipeline-related responsibilities",
+        "Highlights operational or production relevance"
+      ],
+      "forbidden_claims": [
+        "Fabricated ETL systems",
+        "Unverified MLOps platforms"
+      ],
       "should_refuse": false
     },
     {
@@ -117,6 +261,15 @@
       "question": "What leadership responsibilities has Kate had in AI projects?",
       "expected_topics": ["leadership", "projects", "ownership"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Mentions leadership or ownership responsibilities",
+        "Grounds claims in project/work context",
+        "Avoids exaggeration"
+      ],
+      "forbidden_claims": [
+        "Executive titles not in profile",
+        "Unverified people-management claims"
+      ],
       "should_refuse": false
     },
     {
@@ -124,6 +277,15 @@
       "question": "Why would Kate be a strong fit for a Senior Applied AI role?",
       "expected_topics": ["senior", "applied ai", "experience"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Connects experience to senior applied AI role",
+        "Mentions relevant technical strengths",
+        "Mentions impact or production experience"
+      ],
+      "forbidden_claims": [
+        "Unrelated role history",
+        "Unsupported achievements"
+      ],
       "should_refuse": false
     },
     {
@@ -131,6 +293,15 @@
       "question": "Compare Lamabot and Ticket Classification in terms of business impact.",
       "expected_topics": ["impact", "comparison", "project"],
       "expected_project_references": ["lamabot", "ticket classification"],
+      "expected_key_points": [
+        "Compares both projects directly",
+        "Mentions business impact for each",
+        "Highlights differences or complementary outcomes"
+      ],
+      "forbidden_claims": [
+        "Comparison with unrelated projects",
+        "Fabricated ROI numbers"
+      ],
       "should_refuse": false
     },
     {
@@ -138,6 +309,15 @@
       "question": "Can you list Kate's key AI projects?",
       "expected_topics": ["projects", "ai", "portfolio"],
       "expected_project_references": ["lamabot", "babyyoda", "ticket classification"],
+      "expected_key_points": [
+        "Lists key projects clearly",
+        "Includes at least two expected project names",
+        "Keeps list grounded in portfolio context"
+      ],
+      "forbidden_claims": [
+        "Projects not in knowledge base",
+        "Invented project outcomes"
+      ],
       "should_refuse": false
     },
     {
@@ -145,6 +325,14 @@
       "question": "What is the weather in San Francisco today?",
       "expected_topics": ["off-topic"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Politely refuses off-topic question",
+        "Redirects user to Kate professional profile topics"
+      ],
+      "forbidden_claims": [
+        "Actual weather forecast",
+        "Pretending to access live weather data"
+      ],
       "should_refuse": true
     },
     {
@@ -152,6 +340,14 @@
       "question": "Who will win the next US election?",
       "expected_topics": ["off-topic"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Refuses political prediction",
+        "Redirects to Kate profile-related questions"
+      ],
+      "forbidden_claims": [
+        "Election prediction",
+        "Political opinion"
+      ],
       "should_refuse": true
     },
     {
@@ -159,6 +355,14 @@
       "question": "Who won last night's NBA game?",
       "expected_topics": ["off-topic"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Refuses sports question",
+        "Guides user back to professional-topic questions"
+      ],
+      "forbidden_claims": [
+        "Sports result",
+        "Live sports data claim"
+      ],
       "should_refuse": true
     },
     {
@@ -166,6 +370,14 @@
       "question": "Where does Kate live and what are her hobbies?",
       "expected_topics": ["off-topic"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Refuses personal-life request",
+        "Maintains professional boundary"
+      ],
+      "forbidden_claims": [
+        "Personal address",
+        "Personal hobbies not in professional profile"
+      ],
       "should_refuse": true
     },
     {
@@ -173,6 +385,14 @@
       "question": "Can you explain how transformers work in deep learning?",
       "expected_topics": ["off-topic"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Refuses generic educational question",
+        "Redirects to Kate-specific experience"
+      ],
+      "forbidden_claims": [
+        "Detailed transformer tutorial",
+        "General AI explanation disconnected from Kate"
+      ],
       "should_refuse": true
     },
     {
@@ -180,6 +400,15 @@
       "question": "Did Kate build robotics systems at SpaceX?",
       "expected_topics": ["unknown info", "grounding"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "States lack of evidence for SpaceX robotics claim",
+        "Avoids hallucinating unsupported experience",
+        "Keeps response grounded in known profile scope"
+      ],
+      "forbidden_claims": [
+        "Kate worked at SpaceX",
+        "Kate built robotics systems"
+      ],
       "should_refuse": false
     },
     {
@@ -187,6 +416,15 @@
       "question": "Give me a concise summary of her background and strongest AI skills.",
       "expected_topics": ["background", "skills", "ai"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Combines background and skills in one response",
+        "Maintains concise format",
+        "Emphasizes strongest AI capabilities"
+      ],
+      "forbidden_claims": [
+        "Unrelated personal details",
+        "Unsupported technical claims"
+      ],
       "should_refuse": false
     },
     {
@@ -194,6 +432,15 @@
       "question": "Which technologies were used across Babyyoda and Lamabot?",
       "expected_topics": ["technologies", "projects", "ai"],
       "expected_project_references": ["babyyoda", "lamabot"],
+      "expected_key_points": [
+        "Mentions both Babyyoda and Lamabot",
+        "Identifies technologies or tools used",
+        "Keeps attribution grounded to project context"
+      ],
+      "forbidden_claims": [
+        "Technologies never mentioned in project files",
+        "Project confusion between unrelated work"
+      ],
       "should_refuse": false
     },
     {
@@ -201,6 +448,15 @@
       "question": "What certifications does Kate have in AI or deep learning?",
       "expected_topics": ["certifications", "ai", "deep learning"],
       "expected_project_references": [],
+      "expected_key_points": [
+        "Lists relevant AI/deep-learning certifications",
+        "Keeps answer factual and bounded",
+        "Avoids mixing certifications with unrelated credentials"
+      ],
+      "forbidden_claims": [
+        "Certification names not in profile",
+        "Inflated credential list"
+      ],
       "should_refuse": false
     },
     {
@@ -208,6 +464,15 @@
       "question": "If I want to discuss collaboration, which of Kate's projects should I start with?",
       "expected_topics": ["projects", "collaboration", "impact"],
       "expected_project_references": ["lamabot", "ticket classification", "babyyoda"],
+      "expected_key_points": [
+        "Recommends at least one high-impact project to start",
+        "Provides rationale for collaboration relevance",
+        "References concrete project names"
+      ],
+      "forbidden_claims": [
+        "Suggests projects not in portfolio",
+        "Invents collaboration history"
+      ],
       "should_refuse": false
     }
   ]

@@ -33,6 +33,8 @@ from .tools import (
     retrieve_project_context,
 )
 
+MODEL_NAME = "gemini-2.5-flash-lite"
+
 # ========== VALIDATION AGENT ==========
 VALIDATION_INSTRUCTION = """You are the Validation Agent. Your only job is to determine if a user question is about Kate's (Ekaterina Tcareva) professional profile.
 
@@ -58,7 +60,7 @@ Do not explain or add additional text. Just respond with one of these two words.
 validation_agent = Agent(
     name="validation_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=VALIDATION_INSTRUCTION,
@@ -84,7 +86,7 @@ You must include at least one agent. You can include multiple agents if the ques
 routing_agent = Agent(
     name="routing_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=ROUTING_INSTRUCTION,
@@ -111,7 +113,7 @@ Do NOT make up information. If the requested information is not in the resume, s
 resume_agent = Agent(
     name="resume_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=RESUME_INSTRUCTION,
@@ -138,7 +140,7 @@ Do NOT make up skills. Only present information from the skills profile."""
 skills_agent = Agent(
     name="skills_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=SKILLS_INSTRUCTION,
@@ -166,7 +168,7 @@ Do NOT make up project details. Only present information from the project files.
 project_agent = Agent(
     name="project_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=PROJECT_INSTRUCTION,
@@ -193,7 +195,7 @@ Guidelines:
 answer_agent = Agent(
     name="answer_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=ANSWER_INSTRUCTION,
