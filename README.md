@@ -254,3 +254,7 @@ If changes are detected, it executes the golden eval runner.
 ### Cover Banner
 
 ![Cover Banner](assets/cover_page_banner.png)
+
+## Demo Script
+
+See the spoken demo narration at [DEMO_SCRIPT.txt](DEMO_SCRIPT.txt).

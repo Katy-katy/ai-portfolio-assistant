@@ -1,0 +1,55 @@
+[0:00 — HOOK]
+Hi everyone, I’m going to show you Kate’s AI Portfolio Assistant, a multi-agent system that solves a very practical hiring problem: how to quickly understand real project experience without relying only on a static resume.
+I built this for recruiters, hiring managers, and potential collaborators who want grounded, role-relevant answers about Kate’s skills, career history, and AI project impact.
+(pause)
+
+[0:20 — WHAT IT IS]
+At a high level, this is an ADK-based multi-agent portfolio assistant running on FastAPI with a web frontend.
+Instead of one big model prompt, every question goes through a workflow: validation, routing, specialist retrieval, synthesis, and trace logging.
+That means I get better control, clearer observability, and safer behavior when users ask off-topic or unsupported questions.
+It belongs to the secure, grounded conversational agent track, because all core responses are constrained to project knowledge sources and measured with offline evals.
+(pause)
+
+[0:40 — SHOW THE BANNER]
+(show assets/cover_page_banner.png)
+At a glance, this project combines multi-agent orchestration, retrieval with pgvector-ready support, and quality/safety guardrails with feedback and eval scoring.
+(pause)
+
+[1:00 — ARCHITECTURE]
+(show assets/architecture_diagram.png)
+I start in the frontend, where I send a question to POST /run-multi-agent.
+Then FastAPI hands the request to MultiAgentOrchestrator, which is the central coordinator.
+First, validation_agent acts as the security checkpoint and decides whether the prompt is on-topic for Kate’s professional profile.
+If it’s off-topic, the flow returns a controlled refusal message and stops expensive downstream work.
+If it’s on-topic, routing_agent selects which specialists should run for that question.
+resume_agent handles background, career, education, certifications, and publications.
+skills_agent handles technical competencies like AI, NLP, RAG, and frameworks.
+project_agent handles project-specific details like Lamabot, Babyyoda, and Ticket Classification.
+Those specialist agents call MCP-style retrieval tools, specifically retrieve_resume_context, retrieve_skills_context, and retrieve_project_context, which are backed by retrieve_context and cache logic.
+After specialists finish, answer_agent synthesizes a final coherent response for the user.
+Then the system persists traces: question intent, latency, token estimate, and per-agent execution metadata.
+Finally, the Human ✋ loop happens through thumbs up and thumbs down feedback in the UI, which we store and surface in the admin dashboard.
+(pause)
+
+[2:00 — LIVE DEMO]
+(switch to playground at localhost:18081)
+For test case one, I’ll ask: What projects did Kate work on at LinkedIn?
+This should pass validation, route strongly to project_agent, optionally include skills context, and return grounded project names with impact context.
+(pause)
+For test case two, I’ll ask: Tell me about her experience with RAG and LLM agents.
+This should take the skills-focused path, hit retrieve_skills_context, and return production-relevant RAG and LLM experience, not generic textbook AI content.
+(pause)
+For test case three, I’ll ask: What are Kate’s core technical skills and programming languages?
+This should route to skills_agent, produce a concise capabilities summary, and preserve grounded claims from the knowledge base.
+As I run these, I can also show tool badges in the UI indicating which agent called which tool, plus question and agent-run telemetry in storage.
+(pause)
+
+[3:00 — SECURITY & MCP]
+Security checkpoint in one line: validation_agent plus refusal logic enforces domain scope, rejects personal or off-topic prompts, hardens against prompt-injection style drift by keeping specialists tool-grounded, and writes an audit trail in question and agent_run logs.
+MCP in one line: the retrieval tools form a controlled capability layer, so agents access only scoped resume, skills, and project context instead of unconstrained data.
+(pause)
+
+[3:30 — IMPACT / CLOSE]
+This helps hiring teams get faster, higher-signal candidate understanding, helps collaborators quickly find relevant project fit, and helps engineers maintain quality through measurable eval and feedback loops.
+For me, the key value is simple: it turns a static portfolio into a secure, traceable, and intelligent conversation that stays grounded in real work.
+Thank you, and I’m happy to walk through traces or eval results next.
