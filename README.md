@@ -244,3 +244,13 @@ This helper checks changes in:
 - `knowledge/**`
 
 If changes are detected, it executes the golden eval runner.
+
+## Assets
+
+### Architecture Diagram
+
+![Architecture Diagram](assets/architecture_diagram.png)
+
+### Cover Banner
+
+![Cover Banner](assets/cover_page_banner.png)
