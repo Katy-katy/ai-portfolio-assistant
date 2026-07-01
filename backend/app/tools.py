@@ -528,14 +528,32 @@ def _retrieve_local(query: str, category: str, top_k: int) -> list[dict]:
     if not query_tokens:
         return []
 
+    query_lower = query.lower()
     scored: list[tuple[float, Chunk]] = []
+    
     for chunk in _get_local_index():
         if category and chunk.category != category:
             continue
+        
+        # Token overlap score
         overlap = len(query_tokens & chunk.tokens)
-        if overlap <= 0:
-            continue
-        score = overlap / max(len(query_tokens), 1)
+        max_overlap = max(len(query_tokens), len(chunk.tokens))
+        
+        if overlap == 0:
+            # Check for substring matches as fallback
+            chunk_lower = chunk.text.lower()
+            if query_lower not in chunk_lower:
+                # Try individual tokens as substrings
+                token_substrings = sum(1 for t in query_tokens if t in chunk_lower)
+                if token_substrings == 0:
+                    continue  # No match at all
+                overlap = token_substrings * 0.5  # Penalize substring matches
+            else:
+                overlap = len(query_tokens) * 0.8  # Bonus for full substring match
+        
+        # Calculate final score (Jaccard-like + bonuses)
+        score = overlap / max_overlap if max_overlap > 0 else 0.0
+        scored.append((score, chunk))
         scored.append((score, chunk))
 
     scored.sort(key=lambda item: item[0], reverse=True)
